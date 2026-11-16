@@ -66,7 +66,7 @@ internal sealed interface HomePanel {
     data object ManageProfiles : HomePanel
     data class EditProfile(val profile: Profile) : HomePanel
     data class Pin(val profile: Profile) : HomePanel
-    data class AppOptions(val app: AppEntry) : HomePanel
+    data class AppOptions(val app: AppEntry, val fromAllApps: Boolean = false) : HomePanel
     data class ContinueOptions(val item: ContinueItem) : HomePanel
 }
 
@@ -84,7 +84,6 @@ fun FlickScreen(state: HomeState, actions: HomeActions) {
     val favorites = if (child) apps.map { it.packageName } else state.settings.favorites ?: apps.take(5).map { it.packageName }
     var panel by remember { mutableStateOf<HomePanel?>(null) }
     var settingsPage by remember { mutableStateOf(SettingsPage.Root) }
-    var appOptionsParent by remember { mutableStateOf<HomePanel?>(null) }
     var retainedPanel by remember { mutableStateOf<HomePanel?>(null) }
     val panelVisibility = remember { MutableTransitionState(false) }
     val windowFocused = LocalWindowInfo.current.isWindowFocused
@@ -297,7 +296,7 @@ fun FlickScreen(state: HomeState, actions: HomeActions) {
                                 moving = null
                             } else actions.launchApp(app)
                         },
-                        onLongClick = if (child) null else ({ appOptionsParent = null; openPanel(HomePanel.AppOptions(app)) }))
+                        onLongClick = if (child) null else ({ openPanel(HomePanel.AppOptions(app)) }))
                 }
                 if (!child) item(key = "all-apps") {
                     TvFocusSurface(onClick = { openPanel(HomePanel.AllApps) },
@@ -327,19 +326,29 @@ fun FlickScreen(state: HomeState, actions: HomeActions) {
                 onPanel = { if (panel == displayed) openPanel(it) })
         }
         panel?.takeIf { it.isDialog() }?.let { dialog ->
-            HomeDialogs(dialog, state, actions, allAppsScroll, onClose = { if (panel == dialog) closePanel() },
-                onAppOptionsBack = { if (appOptionsParent == null) closePanel() else appOptionsParent?.let { openPanel(it) } },
-                onPanel = { destination ->
-                    if (destination is HomePanel.AppOptions) appOptionsParent = panel.takeIf { it == HomePanel.AllApps }
-                    openPanel(destination)
+            HomeDialogs(dialog, state, actions, allAppsScroll,
+                isCurrent = { panel === dialog }, onClose = { if (panel === dialog) closePanel() },
+                onAppOptionsBack = {
+                    val menu = dialog as? HomePanel.AppOptions
+                    if (menu != null) {
+                        val destination = appOptionsBackDestination(panel, menu)
+                        if (destination !== panel) {
+                            if (destination == null) closePanel() else openPanel(destination)
+                        }
+                    }
                 },
-                onMove = { app ->
+                onPanel = { destination ->
+                    if (panel === dialog) openPanel(destination)
+                },
+                onMove = move@{ app ->
+                    if (panel !== dialog) return@move
                     returnFocus = "app:" + app.packageName
                     moving = app.packageName
                     moveOrder = favorites.filter(byPackage::containsKey)
                     closePanel()
                 },
-                onRemoveContinue = {
+                onRemoveContinue = remove@{
+                    if (panel !== dialog) return@remove
                     val item = (dialog as? HomePanel.ContinueOptions)?.item
                     if (item != null) {
                         val index = state.continueItems.indexOfFirst { it.id == item.id }

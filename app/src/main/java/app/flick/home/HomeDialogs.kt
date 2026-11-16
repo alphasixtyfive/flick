@@ -38,7 +38,7 @@ internal fun HomePanel.isDialog() = this is HomePanel.AppOptions || this is Home
 
 @Composable
 internal fun HomeDialogs(panel: HomePanel, state: HomeState, actions: HomeActions, allAppsScroll: LazyGridState,
-    onClose: () -> Unit, onAppOptionsBack: () -> Unit, onPanel: (HomePanel) -> Unit,
+    isCurrent: () -> Boolean, onClose: () -> Unit, onAppOptionsBack: () -> Unit, onPanel: (HomePanel) -> Unit,
     onMove: (AppEntry) -> Unit, onRemoveContinue: () -> Unit,
     focusedApp: String? = null, onFocusedApp: (String) -> Unit = {}) {
     when (panel) {
@@ -46,15 +46,20 @@ internal fun HomeDialogs(panel: HomePanel, state: HomeState, actions: HomeAction
         is HomePanel.AppOptions -> TvDialog(panel.app.name, onDismiss = onAppOptionsBack) {
             val favorites = state.settings.favorites ?: state.apps.take(5).map { it.packageName }
             val pinned = panel.app.packageName in favorites
-            if (pinned) TvSettingRow("Move", icon = Icons.Default.SwapHoriz, onClick = { onMove(panel.app) })
+            if (pinned) TvSettingRow("Move", icon = Icons.Default.SwapHoriz,
+                onClick = { runAppOptionsAction(isCurrent) { onMove(panel.app) } })
             TvSettingRow(if (pinned) "Remove from Home" else "Add to Home", icon = if (pinned) Icons.Default.Remove else Icons.Default.Add,
                 onClick = {
-                    val updated = if (pinned) favorites - panel.app.packageName else HomePolicy.addFavorite(favorites, panel.app.packageName)
-                    if (updated == null) actions.showMessage("Home supports up to ${HomePolicy.MAX_FAVORITES} apps. Remove one before adding another.")
-                    else { actions.updateSettings(state.settings, state.settings.copy(favorites = updated)); onAppOptionsBack() }
+                    runAppOptionsAction(isCurrent) {
+                        val updated = if (pinned) favorites - panel.app.packageName else HomePolicy.addFavorite(favorites, panel.app.packageName)
+                        if (updated == null) actions.showMessage("Home supports up to ${HomePolicy.MAX_FAVORITES} apps. Remove one before adding another.")
+                        else { actions.updateSettings(state.settings, state.settings.copy(favorites = updated)); onAppOptionsBack() }
+                    }
                 })
-            TvSettingRow("App info", icon = Icons.Default.Info, onClick = { actions.appInfo(panel.app) })
-            if (panel.app.canUninstall) TvSettingRow("Uninstall", icon = Icons.Default.Delete, onClick = { actions.uninstallApp(panel.app) })
+            TvSettingRow("App info", icon = Icons.Default.Info,
+                onClick = { runAppOptionsAction(isCurrent) { actions.appInfo(panel.app) } })
+            if (panel.app.canUninstall) TvSettingRow("Uninstall", icon = Icons.Default.Delete,
+                onClick = { runAppOptionsAction(isCurrent) { actions.uninstallApp(panel.app) } })
         }
         is HomePanel.ContinueOptions -> TvDialog("", onDismiss = onClose, width = 300.dp) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -106,7 +111,11 @@ private fun AllAppsDialog(state: HomeState, actions: HomeActions, scroll: LazyGr
                     val focus = requesters.getOrPut(app.packageName) { FocusRequester() }
                     AppCard(app, state.settings.compactTiles,
                         modifier = Modifier.focusRequester(focus).onFocusChanged { if (it.isFocused) onFocusedApp(app.packageName) },
-                        onClick = { actions.launchApp(app) }, onLongClick = { onPanel(HomePanel.AppOptions(app)) })
+                        onClick = { actions.launchApp(app) },
+                        onLongClick = if (!HomePolicy.canManage(state.settings)) null else ({
+                            onFocusedApp(app.packageName)
+                            onPanel(HomePanel.AppOptions(app, fromAllApps = true))
+                        }))
                 }
             }
         }
