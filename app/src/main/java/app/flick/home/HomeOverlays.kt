@@ -23,6 +23,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.style.TextAlign
 import androidx.tv.material3.Text
 import androidx.tv.material3.MaterialTheme
 import coil.compose.AsyncImage
@@ -42,12 +43,16 @@ internal fun HomeOverlays(panel: HomePanel, state: HomeState, actions: HomeActio
     isCurrent: () -> Boolean, onClose: () -> Unit, onAppOptionsBack: () -> Unit, onPanel: (HomePanel) -> Unit,
     onMove: (AppEntry) -> Unit, onRemoveContinue: () -> Unit,
     focusedApp: String? = null, onFocusedApp: (String) -> Unit = {}) {
+    // The drawer keeps its window, scroll and focus target while its menu is on top.
+    if (panel == HomePanel.AllApps || panel is HomePanel.AppOptions && panel.fromAllApps) {
+        AllAppsDialog(state, actions, allAppsScroll, focusedApp, onFocusedApp, onPanel, onClose,
+            isInteractive = { panel == HomePanel.AllApps && isCurrent() })
+    }
     when (panel) {
-        HomePanel.AllApps -> AllAppsDialog(state, actions, allAppsScroll, focusedApp, onFocusedApp, onPanel, onClose)
         is HomePanel.AppOptions -> TvDialog(panel.app.name, onDismiss = onAppOptionsBack) {
             val favorites = state.settings.favorites ?: state.apps.take(5).map { it.packageName }
             val pinned = panel.app.packageName in favorites
-            if (pinned) TvSettingRow("Move", icon = Icons.Default.SwapHoriz,
+            if (pinned) TvSettingRow(if (panel.fromAllApps) "Move on Home" else "Move", icon = Icons.Default.SwapHoriz,
                 onClick = { runAppOptionsAction(isCurrent) { onMove(panel.app) } })
             TvSettingRow(if (pinned) "Remove from Home" else "Add to Home", icon = if (pinned) Icons.Default.Remove else Icons.Default.Add,
                 onClick = {
@@ -58,9 +63,9 @@ internal fun HomeOverlays(panel: HomePanel, state: HomeState, actions: HomeActio
                     }
                 })
             TvSettingRow("App info", icon = Icons.Default.Info,
-                onClick = { runAppOptionsAction(isCurrent) { actions.appInfo(panel.app) } })
+                onClick = { runAppOptionsAction(isCurrent) { onAppOptionsBack(); actions.appInfo(panel.app) } })
             if (panel.app.canUninstall) TvSettingRow("Uninstall", icon = Icons.Default.Delete,
-                onClick = { runAppOptionsAction(isCurrent) { actions.uninstallApp(panel.app) } })
+                onClick = { runAppOptionsAction(isCurrent) { onAppOptionsBack(); actions.uninstallApp(panel.app) } })
         }
         is HomePanel.ContinueOptions -> TvDialog("", onDismiss = onClose, width = 300.dp) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -94,11 +99,12 @@ internal fun HomeOverlays(panel: HomePanel, state: HomeState, actions: HomeActio
 /** Returning from an app's menu restores its tile without resetting the grid's scroll position. */
 @Composable
 private fun AllAppsDialog(state: HomeState, actions: HomeActions, scroll: LazyGridState,
-    focusedApp: String?, onFocusedApp: (String) -> Unit, onPanel: (HomePanel) -> Unit, onClose: () -> Unit) {
+    focusedApp: String?, onFocusedApp: (String) -> Unit, onPanel: (HomePanel) -> Unit, onClose: () -> Unit,
+    isInteractive: () -> Boolean) {
     val requesters = remember { mutableMapOf<String, FocusRequester>() }
     val latestFocusedApp by rememberUpdatedState(focusedApp)
     val packages = state.apps.map { it.packageName }
-    TvDialog("All apps", onDismiss = onClose, width = 760.dp, requestInitialFocus = false) {
+    TvDialog("All apps", onDismiss = { if (isInteractive()) onClose() }, width = 760.dp, requestInitialFocus = false) {
         val windowFocused = LocalWindowInfo.current.isWindowFocused
         LaunchedEffect(packages, windowFocused) {
             if (!windowFocused || packages.isEmpty()) return@LaunchedEffect
@@ -108,19 +114,27 @@ private fun AllAppsDialog(state: HomeState, actions: HomeActions, scroll: LazyGr
             withFrameNanos { }
             requesters[target]?.requestFocus()
         }
-        LazyVerticalGrid(columns = GridCells.Adaptive(TvLayout.appTileWidth(state.settings.compactTiles)), state = scroll,
+        LazyVerticalGrid(columns = GridCells.Fixed(5), state = scroll,
             modifier = Modifier.fillMaxWidth().heightIn(max = 344.dp), contentPadding = PaddingValues(6.dp),
             horizontalArrangement = Arrangement.spacedBy(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             items(state.apps, key = { it.packageName }) { app ->
-                Box(contentAlignment = Alignment.Center) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     val focus = requesters.getOrPut(app.packageName) { FocusRequester() }
-                    AppCard(app, state.settings.compactTiles,
-                        modifier = Modifier.focusRequester(focus).onFocusChanged { if (it.isFocused) onFocusedApp(app.packageName) },
-                        onClick = { actions.launchApp(app) },
+                    AppCard(app, compact = true,
+                        modifier = Modifier.focusRequester(focus).onFocusChanged {
+                            if (it.isFocused && isInteractive()) onFocusedApp(app.packageName)
+                        },
+                        onClick = { if (isInteractive()) actions.launchApp(app) },
                         onLongClick = if (!HomePolicy.canManage(state.settings)) null else ({
-                            onFocusedApp(app.packageName)
-                            onPanel(HomePanel.AppOptions(app, fromAllApps = true))
+                            if (isInteractive()) {
+                                onFocusedApp(app.packageName)
+                                onPanel(HomePanel.AppOptions(app, fromAllApps = true))
+                            }
                         }))
+                    Text(app.name, style = MaterialTheme.typography.bodyMedium, maxLines = 1,
+                        overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth())
                 }
             }
         }
