@@ -1,11 +1,20 @@
 package app.flick.home
 
+import android.graphics.Paint
+import android.graphics.Rect
+import android.graphics.Typeface
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFontFamilyResolver
+import androidx.compose.ui.layout.FirstBaseline
+import androidx.compose.ui.layout.HorizontalAlignmentLine
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontSynthesis
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.rememberTextMeasurer
@@ -20,9 +29,13 @@ import app.flick.weather.icon
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import kotlinx.coroutines.delay
+import kotlin.math.roundToInt
+
+internal val ClockDigitsCentre = HorizontalAlignmentLine { first, second -> minOf(first, second) }
 
 @Composable
-internal fun ClockWeather(clock24: Boolean, showWeather: Boolean, weatherLocationSet: Boolean, weather: WeatherReading?, scale: Float) {
+internal fun ClockWeather(clock24: Boolean, showWeather: Boolean, weatherLocationSet: Boolean, weather: WeatherReading?, scale: Float,
+    modifier: Modifier = Modifier) {
     var now by remember { mutableStateOf(LocalDateTime.now()) }
     val locale = LocalConfiguration.current.locales[0]
     val timeFormat = remember(clock24, locale) {
@@ -40,6 +53,7 @@ internal fun ClockWeather(clock24: Boolean, showWeather: Boolean, weatherLocatio
         fontSize = TvLayout.ClockFont * scale, lineHeight = TvLayout.ClockLineHeight * scale,
         fontWeight = FontWeight.Normal, fontFeatureSettings = "tnum",
     )
+    val digitsCentre = rememberClockDigitsCentre(clockStyle, timeFormat)
     val periodStyle = MaterialTheme.typography.bodySmall.copy(
         fontSize = (11 * scale).sp, lineHeight = (16 * scale).sp,
     )
@@ -81,10 +95,10 @@ internal fun ClockWeather(clock24: Boolean, showWeather: Boolean, weatherLocatio
         }
     }
     // Width comes from a stable time template, never the date or a newly arrived weather reading.
-    Column(Modifier.width(blockWidth), horizontalAlignment = Alignment.CenterHorizontally) {
+    Column(modifier.width(blockWidth), horizontalAlignment = Alignment.CenterHorizontally) {
         Row(Modifier.fillMaxWidth().height(clockLineHeight), horizontalArrangement = Arrangement.Center) {
             Text(now.format(timeFormat), style = clockStyle, maxLines = 1, softWrap = false,
-                modifier = Modifier.alignByBaseline())
+                modifier = Modifier.clockDigitsCentre(digitsCentre).alignByBaseline())
             if (!clock24) Text(now.format(periodFormat),
                 style = periodStyle, color = FlickColors.Secondary,
                 maxLines = 1, softWrap = false,
@@ -108,6 +122,38 @@ internal fun ClockWeather(clock24: Boolean, showWeather: Boolean, weatherLocatio
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun rememberClockDigitsCentre(style: TextStyle, formatter: DateTimeFormatter): Float {
+    val resolvedTypeface = LocalFontFamilyResolver.current.resolve(
+        style.fontFamily, style.fontWeight ?: FontWeight.Normal,
+        style.fontStyle ?: FontStyle.Normal, style.fontSynthesis ?: FontSynthesis.None,
+    ).value as Typeface
+    val fontSizePx = with(LocalDensity.current) { style.fontSize.toPx() }
+    val zero = formatter.decimalStyle.zeroDigit
+    return remember(resolvedTypeface, fontSizePx, zero, formatter.locale, style.fontFeatureSettings) {
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            typeface = resolvedTypeface
+            textSize = fontSizePx
+            textLocale = formatter.locale
+            fontFeatureSettings = style.fontFeatureSettings
+        }
+        // A stable sample keeps the alignment still as the displayed time changes.
+        val digits = CharArray(10) { zero + it }.concatToString()
+        val bounds = Rect()
+        paint.getTextBounds(digits, 0, digits.length, bounds)
+        if (bounds.isEmpty) paint.fontMetrics.let { (it.ascent + it.descent) / 2f }
+        else (bounds.top + bounds.bottom) / 2f
+    }
+}
+
+private fun Modifier.clockDigitsCentre(centreFromBaseline: Float) = layout { measurable, constraints ->
+    val placeable = measurable.measure(constraints)
+    val centre = (placeable[FirstBaseline] + centreFromBaseline).roundToInt()
+    layout(placeable.width, placeable.height, alignmentLines = mapOf(ClockDigitsCentre to centre)) {
+        placeable.placeRelative(0, 0)
     }
 }
 

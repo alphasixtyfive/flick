@@ -20,7 +20,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.layout.onPlaced
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
@@ -250,24 +249,22 @@ fun FlickScreen(state: HomeState, actions: HomeActions) {
                 modifier = Modifier.fillMaxSize(),
             )
         }
-        val clockLineHeight = with(LocalDensity.current) { (TvLayout.ClockLineHeight * fontScale).toDp() }
         Row(Modifier.fillMaxWidth().padding(horizontal = TvLayout.SafeHorizontal, vertical = TvLayout.SafeVertical),
             verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.SpaceBetween) {
-            Box(Modifier.height(clockLineHeight), contentAlignment = Alignment.CenterStart) {
-                TvFocusSurface(
-                    onClick = { openPanel(HomePanel.Profiles) }, shape = CircleShape,
-                    onLongClick = if (child) null else ({ openSettings() }),
-                    modifier = homeFocus("profile", leftBoundary = true, rightBoundary = lastTopAction == "profile")
-                        .onPlaced { profilePlaced = true }.size(TvLayout.TopActionSize).semantics {
-                        contentDescription = profile.name
-                        stateDescription = "Active profile"
-                    },
-                ) {
-                    ProfileAvatar(profile, TvLayout.TopActionSize)
-                }
+            TvFocusSurface(
+                onClick = { openPanel(HomePanel.Profiles) }, shape = CircleShape,
+                onLongClick = if (child) null else ({ openSettings() }),
+                modifier = homeFocus("profile", leftBoundary = true, rightBoundary = lastTopAction == "profile")
+                    .alignBy { it.measuredHeight / 2 }
+                    .onPlaced { profilePlaced = true }.size(TvLayout.TopActionSize).semantics {
+                    contentDescription = profile.name
+                    stateDescription = "Active profile"
+                },
+            ) {
+                ProfileAvatar(profile, TvLayout.TopActionSize)
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(24.dp), verticalAlignment = Alignment.Top) {
-                Row(Modifier.height(clockLineHeight), horizontalArrangement = Arrangement.spacedBy(TvLayout.Gap),
+            Row(Modifier.alignBy(ClockDigitsCentre), horizontalArrangement = Arrangement.spacedBy(24.dp), verticalAlignment = Alignment.Top) {
+                Row(Modifier.alignBy { it.measuredHeight / 2 }, horizontalArrangement = Arrangement.spacedBy(TvLayout.Gap),
                     verticalAlignment = Alignment.CenterVertically) {
                     if (!child && state.settings.showHomeAssistant && state.haConfiguration.configured) TvAction(
                         label = "Home Assistant", icon = FlickIcons.HomeAssistant,
@@ -284,7 +281,8 @@ fun FlickScreen(state: HomeState, actions: HomeActions) {
                         modifier = homeFocus("wallpaper", rightBoundary = true), onClick = actions.rotateWallpaper,
                     )
                 }
-                ClockWeather(state.settings.clock24, state.settings.showWeather, state.settings.weatherLocation != null, state.weather, fontScale)
+                ClockWeather(state.settings.clock24, state.settings.showWeather, state.settings.weatherLocation != null, state.weather, fontScale,
+                    modifier = Modifier.alignBy(ClockDigitsCentre))
             }
         }
 
