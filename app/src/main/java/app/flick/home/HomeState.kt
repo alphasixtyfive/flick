@@ -59,6 +59,7 @@ data class HomeActions(
     val chooseProfile: (Profile, String, (Result<Unit>) -> Unit) -> Unit,
     val cancelProfileSelection: () -> Unit,
     val saveProfile: (Profile, String, (Result<Unit>) -> Unit) -> Unit,
+    val setProfileApp: (Profile, String, Boolean, (Result<Unit>) -> Unit) -> Unit,
     val deleteProfile: (Profile, (Result<Unit>) -> Unit) -> Unit,
     val chooseProfilePhoto: (Profile) -> Unit,
     val removeProfilePhoto: (Profile) -> Unit,

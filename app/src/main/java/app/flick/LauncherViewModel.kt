@@ -14,6 +14,7 @@ import app.flick.homeassistant.HaPolicy
 import app.flick.homeassistant.HomeAssistantRepository
 import app.flick.profiles.Profile
 import app.flick.profiles.ProfileSecurity
+import app.flick.profiles.withChildApp
 import app.flick.settings.LauncherSettings
 import app.flick.settings.SettingsCodec
 import app.flick.settings.SettingsStore
@@ -305,10 +306,32 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         editSettings { settings -> settings.copy(profiles = settings.profiles.map { if (it.id == profile.id) it.copy(wallpaperUri = uri) else it }) }
     }
 
+    fun setProfileApp(profile: Profile, app: String, allowed: Boolean, onComplete: (Result<Unit>) -> Unit) {
+        val job = privilegedTask {
+            val result = try {
+                profileLock.withLock {
+                    store.update { current ->
+                        check(adult() && !switchingProfile) { "Choose an adult profile first" }
+                        current.withChildApp(profile.id, app, allowed)
+                    }
+                }
+                Result.success(Unit)
+            } catch (cancelled: CancellationException) {
+                message("App access change was interrupted. Check the saved switches.")
+                onComplete(Result.failure(IllegalStateException("The app change was cancelled. Check its saved state.")))
+                throw cancelled
+            } catch (error: Exception) { Result.failure(error) }
+            result.onFailure { message("App access could not be saved. Check the saved switches.") }
+            onComplete(result)
+        }
+        if (job == null) onComplete(Result.failure(IllegalStateException("Choose an adult profile first")))
+    }
+
     fun saveProfile(profile: Profile, pin: String, onComplete: (Result<Unit>) -> Unit) {
         profileEdit(onComplete) { settings ->
             val previous = settings.profiles.firstOrNull { it.id == profile.id }
             val candidate = profile.copy(pinSalt = previous?.pinSalt, pinHash = previous?.pinHash,
+                allowedApps = previous?.allowedApps ?: profile.allowedApps,
                 avatar = if (previous != null) previous.avatar else profile.avatar,
                 wallpaperUri = if (previous != null) previous.wallpaperUri else profile.wallpaperUri)
             val protected = if (!candidate.child && pin.isNotEmpty()) withContext(Dispatchers.Default) {

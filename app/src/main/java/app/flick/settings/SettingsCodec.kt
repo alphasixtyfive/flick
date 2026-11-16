@@ -28,7 +28,8 @@ object SettingsCodec {
 
     private fun JSONArray?.strings(limit: Int) = if (this == null) emptyList() else
         (0 until minOf(length(), limit)).mapNotNull { opt(it) as? String }.distinct()
-    private fun packages(array: JSONArray?, limit: Int) = array.strings(limit).filter { it.length <= 256 && packageName.matches(it) }
+    internal fun validPackageName(value: String) = value.length <= 256 && packageName.matches(value)
+    private fun packages(array: JSONArray?, limit: Int) = array.strings(limit).filter(::validPackageName)
 
     /** Existing private records must carry explicit authority; import defaults are not recovery. */
     fun readStored(json: JSONObject): LauncherSettings {

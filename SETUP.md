@@ -21,6 +21,8 @@ button is hidden, an adult can hold the profile button or use the remote's Setti
 Press OK to open an app or Continue watching item; hold OK to open its options. Android handles
 App info and uninstall confirmation. Remove from Continue watching hides a title in Flick without
 changing streaming history. Restore removed titles is under Home screen settings.
+The app drawer uses a five-column grid with app names beneath the banners. A long-press menu stays
+over the drawer; Back or adding/removing a Home favourite returns to the same app and scroll position.
 
 Continue watching uses Android's Watch Next provider, so availability depends on the apps and TV box.
 Enable it in Home screen settings and grant TV-listings access when Android asks.
@@ -40,6 +42,8 @@ stays fixed while the profile is active; other profiles keep their own picture o
 Select **Use shared wallpapers** to remove the override. Only adults can change profile wallpapers.
 
 Set a parent PIN on every adult before adding a child profile, then choose the child's allowed apps.
+For an existing child profile, **Allowed apps** opens a separate screen where each switch saves
+automatically. Name, role and PIN edits still use Save profile; app switches do not save those drafts.
 These limits apply to Flick's app list; they do not create separate Android users or restrict content
 inside another app. Set up child accounts and content limits in Plex, Jellyfin and other media apps too.
 

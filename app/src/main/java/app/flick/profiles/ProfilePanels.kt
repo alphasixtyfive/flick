@@ -56,12 +56,12 @@ private fun ProfileStartup.label() = when (this) {
 internal fun ProfileEditor(profile: Profile, profiles: List<Profile>, apps: List<AppEntry>,
     onSave: (Profile, String, (Result<Unit>) -> Unit) -> Unit,
     onDelete: (Profile, (Result<Unit>) -> Unit) -> Unit,
+    onSetApp: (Profile, String, Boolean, (Result<Unit>) -> Unit) -> Unit,
     onChoosePhoto: (Profile) -> Unit, onRemovePhoto: (Profile) -> Unit,
     onChooseWallpaper: (Profile) -> Unit, onRemoveWallpaper: (Profile) -> Unit,
     onSetWallpaper: (Profile, String) -> Unit, onBack: () -> Unit) {
     var name by remember(profile.id) { mutableStateOf(profile.name) }
     var child by remember(profile.id) { mutableStateOf(profile.child) }
-    var allowed by remember(profile.id) { mutableStateOf(profile.allowedApps.toSet()) }
     var pin by remember(profile.id) { mutableStateOf("") }
     var pending by remember(profile.id) { mutableStateOf<ProfileEditOperation?>(null) }
     var sequence by remember(profile.id) { mutableIntStateOf(0) }
@@ -70,6 +70,7 @@ internal fun ProfileEditor(profile: Profile, profiles: List<Profile>, apps: List
     var confirmDelete by remember(profile.id) { mutableStateOf(false) }
     var choosingWallpaper by remember(profile.id) { mutableStateOf(false) }
     var builtInWallpaper by remember(profile.id) { mutableStateOf(false) }
+    var editingApps by remember(profile.id) { mutableStateOf(false) }
     val currentProfile = profiles.find { it.id == profile.id } ?: profile
     // A result received after Back only updates detached state; it cannot navigate.
     LaunchedEffect(completion) {
@@ -89,8 +90,13 @@ internal fun ProfileEditor(profile: Profile, profiles: List<Profile>, apps: List
         action { result -> completion = ProfileEditCompletion(submittedSequence, result) }
     }
     val existing = profiles.any { it.id == profile.id }
+    val changed = !existing || name.trim() != currentProfile.name || child != currentProfile.child || pin.isNotEmpty()
     val otherProfiles = profiles.filterNot { it.id == profile.id }
     val needsPin = !child && otherProfiles.any { it.child } && currentProfile.pinHash == null
+    if (editingApps && existing && currentProfile.child) {
+        ProfileAppAccessPanel(currentProfile, apps, onSetApp, onBack = { editingApps = false })
+        return
+    }
     if (builtInWallpaper) {
         BuiltInWallpaperPicker(currentProfile.wallpaperUri, onSelect = {
             onSetWallpaper(currentProfile, it.uri)
@@ -128,7 +134,7 @@ internal fun ProfileEditor(profile: Profile, profiles: List<Profile>, apps: List
             }, secret = true, numeric = true)
             if (needsPin) Text("A parent PIN is required when child profiles are enabled.", style = MaterialTheme.typography.bodySmall)
         }
-        TvSettingRow(if (pending == ProfileEditOperation.Save) "Saving…" else "Save profile",
+        if (changed || pending == ProfileEditOperation.Save) TvSettingRow(if (pending == ProfileEditOperation.Save) "Saving…" else "Save profile",
             icon = Icons.Default.Check, onClick = save@ {
                 if (pending != null) return@save
                 localError = when {
@@ -141,7 +147,7 @@ internal fun ProfileEditor(profile: Profile, profiles: List<Profile>, apps: List
                     else -> null
                 }
                 if (localError == null) {
-                    val draft = currentProfile.copy(name = name.trim(), child = child, allowedApps = allowed.toList())
+                    val draft = currentProfile.copy(name = name.trim(), child = child)
                     if (draft == currentProfile && pin.isEmpty()) onBack()
                     else {
                         val submittedPin = pin
@@ -152,20 +158,10 @@ internal fun ProfileEditor(profile: Profile, profiles: List<Profile>, apps: List
             })
         localError?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = Color(0xffffd5cd)) }
         if (child) {
-            Text("Allowed apps", style = MaterialTheme.typography.titleMedium)
             Text("Set child accounts and content limits inside each media app too.", style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = .7f))
-            apps.forEach { app ->
-                TvSettingRow(app.name, checked = app.packageName in allowed, onClick = select@ {
-                    if (pending != null) return@select
-                    if (app.packageName in allowed) {
-                        allowed = allowed - app.packageName
-                        localError = null
-                    } else if (allowed.size < 100) {
-                        allowed = allowed + app.packageName
-                        localError = null
-                    } else localError = "Choose up to one hundred allowed apps."
-                })
-            }
+            if (existing && currentProfile.child) TvSettingRow("Allowed apps", icon = Icons.Default.Apps,
+                detail = "${currentProfile.allowedApps.size} apps", onClick = { if (pending == null) editingApps = true })
+            else Text("Save this profile before choosing allowed apps.", style = MaterialTheme.typography.bodySmall)
         }
         if (existing && profiles.size > 1 && (currentProfile.child || profiles.count { !it.child } > 1)) {
             TvSettingRow(if (pending == ProfileEditOperation.Delete) "Deleting…" else "Delete profile", icon = Icons.Default.Delete,

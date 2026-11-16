@@ -22,7 +22,7 @@ internal fun HomePanels(panel: HomePanel?, state: HomeState, actions: HomeAction
             onBack = { onPanel(HomePanel.Settings) }, startup = ProfileSession.startup(state.settings),
             onStartupChange = { actions.updateSettings(state.settings, state.settings.copy(profileStartup = it)) })
         is HomePanel.EditProfile -> ProfileEditor(panel.profile, state.settings.profiles, state.apps,
-            actions.saveProfile, actions.deleteProfile, actions.chooseProfilePhoto, actions.removeProfilePhoto,
+            actions.saveProfile, actions.deleteProfile, actions.setProfileApp, actions.chooseProfilePhoto, actions.removeProfilePhoto,
             actions.chooseProfileWallpaper, actions.removeProfileWallpaper,
             actions.setProfileWallpaper,
             onBack = { onPanel(HomePanel.ManageProfiles) })
