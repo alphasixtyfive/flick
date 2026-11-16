@@ -72,7 +72,7 @@ class SettingsCodecTest {
     }
 
     @Test fun strictStoredRoundTripRetainsASelectedChildAndAdultProtection() {
-        val adult = ProfileSecurity.protect(Profile("adult", "Adult"), "0208")
+        val adult = ProfileSecurity.protect(Profile("adult", "Adult"), "0123")
         val stored = LauncherSettings(profiles = listOf(adult, Profile("child", "Child", child = true)), activeProfileId = "child")
         assertEquals(stored, SettingsCodec.readStored(SettingsCodec.write(stored)))
     }
