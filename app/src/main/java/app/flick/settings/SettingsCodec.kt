@@ -11,6 +11,8 @@ import org.json.JSONObject
 object SettingsCodec {
     private val identifier = Regex("[A-Za-z0-9_-]{1,64}")
     private val packageName = Regex("[A-Za-z_][A-Za-z0-9_]*(\\.[A-Za-z_][A-Za-z0-9_]*)+")
+    private val pinSaltPattern = Regex("[a-f0-9]{32}")
+    private val pinHashPattern = Regex("[a-f0-9]{64}")
     private val presentationFields = setOf("largeText", "compactTiles", "showHomeAssistant", "showSettings", "showWallpaper",
         "showWeather", "clock24", "showContinue", "navigationSound", "weatherLocation", "favorites", "removedContinue", "profileStartup")
 
@@ -34,9 +36,18 @@ object SettingsCodec {
     /** Existing private records must carry explicit authority; import defaults are not recovery. */
     fun readStored(json: JSONObject): LauncherSettings {
         val people = json.opt("profiles") as? JSONArray
-        require(people != null && people.length() > 0) { "Stored profiles are missing" }
+        require(people != null && people.length() in 1..12) { "Stored profiles are missing or invalid" }
         val active = json.opt("activeProfileId") as? String
         require(!active.isNullOrBlank()) { "Stored active profile is missing" }
+        for (index in 0 until people.length()) {
+            val profile = people.getJSONObject(index)
+            require(profile.opt("child") is Boolean) { "Stored profile role is missing or invalid" }
+            val salt = profile.opt("pinSalt").takeUnless { it == JSONObject.NULL }
+            val hash = profile.opt("pinHash").takeUnless { it == JSONObject.NULL }
+            require(salt == null || salt is String && pinSaltPattern.matches(salt)) { "Stored PIN salt is invalid" }
+            require(hash == null || hash is String && pinHashPattern.matches(hash)) { "Stored PIN verifier is invalid" }
+            require((salt == null) == (hash == null)) { "Stored profile protection is incomplete" }
+        }
         return read(json)
     }
 
@@ -50,8 +61,8 @@ object SettingsCodec {
                 val id = p.getString("id")
                 val name = p.getString("name").trim()
                 require(identifier.matches(id) && name.length in 1..48 && name.none(Char::isISOControl)) { "Invalid profile" }
-                val salt = p.optString("pinSalt").takeIf { it.matches(Regex("[a-f0-9]{32}")) }
-                val hash = p.optString("pinHash").takeIf { it.matches(Regex("[a-f0-9]{64}")) }
+                val salt = p.optString("pinSalt").takeIf(pinSaltPattern::matches)
+                val hash = p.optString("pinHash").takeIf(pinHashPattern::matches)
                 require((salt == null) == (hash == null)) { "Incomplete profile protection" }
                 Profile(id, name, p.optBoolean("child"), imageUri(p.optString("avatar")),
                     packages(p.optJSONArray("allowedApps"), 100), salt, hash,

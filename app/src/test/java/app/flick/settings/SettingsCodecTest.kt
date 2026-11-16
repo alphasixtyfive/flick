@@ -77,6 +77,50 @@ class SettingsCodecTest {
         assertEquals(stored, SettingsCodec.readStored(SettingsCodec.write(stored)))
     }
 
+    @Test fun storedProfilesRequireAnExplicitBooleanRole() {
+        val adult = ProfileSecurity.protect(Profile("adult", "Adult"), "0123")
+        val settings = LauncherSettings(profiles = listOf(adult, Profile("child", "Child", child = true)))
+        for (index in settings.profiles.indices) {
+            val missing = SettingsCodec.write(settings)
+            missing.getJSONArray("profiles").getJSONObject(index).remove("child")
+            assertThrows(IllegalArgumentException::class.java) { SettingsCodec.readStored(missing) }
+            for (role in listOf(JSONObject.NULL, "true", "false", 0, JSONObject())) {
+                val malformed = SettingsCodec.write(settings)
+                malformed.getJSONArray("profiles").getJSONObject(index).put("child", role)
+                assertThrows(IllegalArgumentException::class.java) { SettingsCodec.readStored(malformed) }
+            }
+        }
+    }
+
+    @Test fun malformedStoredProtectionCannotBecomeAnUnprotectedAdult() {
+        val adult = ProfileSecurity.protect(Profile("adult", "Adult"), "0123")
+        val settings = LauncherSettings(profiles = listOf(adult), activeProfileId = adult.id)
+        for ((salt, hash) in listOf(
+            "broken" to "broken", "" to "", 123 to 456,
+            JSONObject.NULL to adult.pinHash, adult.pinSalt to JSONObject.NULL,
+        )) {
+            val malformed = SettingsCodec.write(settings)
+            malformed.getJSONArray("profiles").getJSONObject(0).put("pinSalt", salt).put("pinHash", hash)
+            assertThrows(IllegalArgumentException::class.java) { SettingsCodec.readStored(malformed) }
+        }
+    }
+
+    @Test fun absentOrNullProtectionRemainsValidForAnUnprotectedAdult() {
+        val settings = LauncherSettings()
+        assertEquals(settings, SettingsCodec.readStored(SettingsCodec.write(settings)))
+        val explicitNulls = SettingsCodec.write(settings)
+        explicitNulls.getJSONArray("profiles").getJSONObject(0)
+            .put("pinSalt", JSONObject.NULL).put("pinHash", JSONObject.NULL)
+        assertEquals(settings, SettingsCodec.readStored(explicitNulls))
+    }
+
+    @Test fun approvedImportsKeepTheirDefaultRoleWithoutWeakeningStoredParsing() {
+        val imported = SettingsCodec.write(LauncherSettings())
+        imported.getJSONArray("profiles").getJSONObject(0).remove("child")
+        assertFalse(SettingsCodec.read(imported).profiles.single().child)
+        assertThrows(IllegalArgumentException::class.java) { SettingsCodec.readStored(imported) }
+    }
+
     @Test fun profileOrdersRoundTripAndOlderRecordsNeedNoMigration() {
         val settings = LauncherSettings(profiles = listOf(Profile("home", "Home", appOrder = listOf("org.example.second", "org.example.first"))))
         assertEquals(settings, SettingsCodec.readStored(SettingsCodec.write(settings)))
