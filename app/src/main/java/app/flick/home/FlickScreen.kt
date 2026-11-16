@@ -19,6 +19,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
@@ -99,6 +100,8 @@ fun FlickScreen(state: HomeState, actions: HomeActions) {
     val requesters = remember { mutableMapOf<String, FocusRequester>() }
     var returnFocus by remember { mutableStateOf("profile") }
     var hadPanel by remember { mutableStateOf(false) }
+    var initialHomeFocusPending by remember { mutableStateOf(true) }
+    var profilePlaced by remember { mutableStateOf(false) }
     // A native dialog blocks input in its own window and preserves the caller's focus.
     val backgroundEnabled = panel?.isDialog() == true ||
         (panel == null && !panelVisibility.currentState && !panelVisibility.targetState)
@@ -110,7 +113,12 @@ fun FlickScreen(state: HomeState, actions: HomeActions) {
             right = if (rightBoundary) FocusRequester.Cancel else FocusRequester.Default
         }
         .focusRequester(requesters.getOrPut(id) { FocusRequester() })
-        .onFocusChanged { if (it.isFocused && backgroundEnabled && !hadPanel) returnFocus = id }
+        .onFocusChanged {
+            if (it.isFocused) {
+                initialHomeFocusPending = false
+                if (backgroundEnabled && !hadPanel) returnFocus = id
+            }
+        }
     var moving by remember { mutableStateOf<String?>(null) }
     var moveOrder by remember { mutableStateOf<List<String>>(emptyList()) }
     val movePress = remember { RemotePress() }
@@ -146,6 +154,11 @@ fun FlickScreen(state: HomeState, actions: HomeActions) {
     fun closePanel() {
         panelVisibility.targetState = false
         panel = null
+    }
+    LaunchedEffect(initialHomeFocusPending, profilePlaced, windowFocused, panel, backgroundEnabled, hadPanel) {
+        if (initialHomeFocusPending && profilePlaced && windowFocused && panel == null && backgroundEnabled && !hadPanel) {
+            requesters["profile"]?.requestFocus()
+        }
     }
     LaunchedEffect(state.message) {
         if (state.message != null) { delay(6000); actions.dismissMessage() }
@@ -247,7 +260,8 @@ fun FlickScreen(state: HomeState, actions: HomeActions) {
                 TvFocusSurface(
                     onClick = { openPanel(HomePanel.Profiles) }, shape = CircleShape,
                     onLongClick = if (child) null else ({ openSettings() }),
-                    modifier = homeFocus("profile", leftBoundary = true, rightBoundary = lastTopAction == "profile").size(TvLayout.TopActionSize).semantics {
+                    modifier = homeFocus("profile", leftBoundary = true, rightBoundary = lastTopAction == "profile")
+                        .onPlaced { profilePlaced = true }.size(TvLayout.TopActionSize).semantics {
                         contentDescription = profile.name
                         stateDescription = "Active profile"
                     },
