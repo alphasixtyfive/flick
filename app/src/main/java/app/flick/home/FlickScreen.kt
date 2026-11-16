@@ -25,7 +25,6 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.*
 import app.flick.ui.theme.FlickColors
@@ -214,7 +213,7 @@ fun FlickScreen(state: HomeState, actions: HomeActions) {
         moving = null
     }
 
-    Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xff24374a), Color(0xff101820)))).navigationFeedback()
+    Box(Modifier.fillMaxSize().navigationFeedback()
         .onPreviewKeyEvent { event ->
             if (event.nativeKeyEvent.keyCode == android.view.KeyEvent.KEYCODE_SETTINGS) {
                 if (panel?.isOverlay() == true) return@onPreviewKeyEvent true
@@ -251,10 +250,6 @@ fun FlickScreen(state: HomeState, actions: HomeActions) {
                 modifier = Modifier.fillMaxSize(),
             )
         }
-        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(
-            Color.Black.copy(alpha = .48f), Color.Transparent, Color.Black.copy(alpha = .86f),
-        ))))
-
         val clockLineHeight = with(LocalDensity.current) { (TvLayout.ClockLineHeight * fontScale).toDp() }
         Row(Modifier.fillMaxWidth().padding(horizontal = TvLayout.SafeHorizontal, vertical = TvLayout.SafeVertical),
             verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.SpaceBetween) {

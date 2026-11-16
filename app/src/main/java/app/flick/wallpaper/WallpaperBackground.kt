@@ -20,6 +20,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
@@ -43,10 +44,17 @@ fun WallpaperBackground(
     dimAmount: Float,
     modifier: Modifier = Modifier,
 ) {
+    val dim = dimAmount.takeIf { it.isFinite() }?.coerceIn(0f, .7f) ?: .18f
+    // Combine dimming and edge shading instead of blending two full-screen overlays.
+    val shade = remember(dim) { Brush.verticalGradient(listOf(
+        Color.Black.copy(alpha = dim + (1f - dim) * .48f),
+        Color.Black.copy(alpha = dim),
+        Color.Black.copy(alpha = dim + (1f - dim) * .86f),
+    )) }
     BoxWithConstraints(modifier.background(Brush.verticalGradient(listOf(Color(0xFF243448), Color(0xFF111720))))) {
         val target = IntSize(constraints.maxWidth.coerceIn(1, 3840), constraints.maxHeight.coerceIn(1, 2160))
         WallpaperFrames(photo, target)
-        Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = dimAmount.takeIf { it.isFinite() }?.coerceIn(0f, .7f) ?: .18f)))
+        Box(Modifier.fillMaxSize().background(shade))
     }
 }
 
@@ -89,7 +97,11 @@ private fun WallpaperFrames(photo: WallpaperPhoto?, target: IntSize) {
     }
 
     previous?.let { Image(it, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop) }
-    shown?.let { Image(it, contentDescription = null, modifier = Modifier.fillMaxSize().graphicsLayer { alpha = opacity.value }, contentScale = ContentScale.Crop) }
+    shown?.let { Image(it, contentDescription = null, modifier = Modifier.fillMaxSize().graphicsLayer {
+        // A single image has no overlapping children: fade it without an offscreen buffer.
+        compositingStrategy = CompositingStrategy.ModulateAlpha
+        alpha = opacity.value
+    }, contentScale = ContentScale.Crop) }
 }
 
 private fun frame(drawable: Drawable): ImageBitmap {
