@@ -1,0 +1,10 @@
+<resources>
+    <style name="Theme.Flick" parent="android:style/Theme.Material.NoActionBar">
+        <item name="android:fontFamily">@font/google_sans_flex_tv</item>
+        <item name="android:windowActionModeOverlay">true</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowFullscreen">true</item>
+        <item name="android:windowBackground">#10141A</item>
+        <item name="android:colorAccent">#E9EDF3</item>
+    </style>
+</resources>
