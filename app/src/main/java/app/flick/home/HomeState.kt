@@ -64,6 +64,7 @@ data class HomeActions(
     val removeProfilePhoto: (Profile) -> Unit,
     val chooseProfileWallpaper: (Profile) -> Unit,
     val removeProfileWallpaper: (Profile) -> Unit,
+    val setProfileWallpaper: (Profile, String) -> Unit,
     val searchPlaces: (String) -> Unit,
     val rotateWallpaper: () -> Unit,
     val saveWallpaperSettings: (WallpaperSettings, WallpaperSettings) -> Unit,

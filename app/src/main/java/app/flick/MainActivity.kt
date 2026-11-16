@@ -146,6 +146,7 @@ class MainActivity : ComponentActivity() {
         removeProfilePhoto = { model.saveProfilePhoto(it, null) },
         chooseProfileWallpaper = ::chooseProfileWallpaper,
         removeProfileWallpaper = { model.saveProfileWallpaper(it, null) },
+        setProfileWallpaper = model::saveProfileWallpaper,
         searchPlaces = model::searchPlaces,
         rotateWallpaper = model::rotateWallpaper,
         saveWallpaperSettings = model::saveWallpaperSettings,

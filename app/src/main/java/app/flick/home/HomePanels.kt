@@ -24,6 +24,7 @@ internal fun HomePanels(panel: HomePanel?, state: HomeState, actions: HomeAction
         is HomePanel.EditProfile -> ProfileEditor(panel.profile, state.settings.profiles, state.apps,
             actions.saveProfile, actions.deleteProfile, actions.chooseProfilePhoto, actions.removeProfilePhoto,
             actions.chooseProfileWallpaper, actions.removeProfileWallpaper,
+            actions.setProfileWallpaper,
             onBack = { onPanel(HomePanel.ManageProfiles) })
         HomePanel.HomeAssistantControls -> HomeAssistantControlsPanel(state.homeControls, state.haConnectionState,
             actions.setHomePower, actions.runHomeScene, actions.retryHomeAssistant,

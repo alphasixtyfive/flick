@@ -30,6 +30,7 @@ import coil.compose.AsyncImage
 private enum class SlideshowChoice { Interval, Dimming }
 
 private sealed interface WallpaperPage {
+    data object BuiltIn : WallpaperPage
     data object Sources : WallpaperPage
     data object Slideshow : WallpaperPage
     data object Advanced : WallpaperPage
@@ -58,6 +59,8 @@ internal fun WallpaperSettingsPanel(settings: WallpaperSettings, onSave: (Wallpa
     }
     when (val current = page) {
         WallpaperPage.Sources -> TvPanel("Wallpapers", onBack = onBack) {
+            TvSettingRow("Built-in wallpapers", detail = "Nine wallpapers available offline", icon = Icons.Default.Wallpaper,
+                onClick = { page = WallpaperPage.BuiltIn })
             TvSettingRow("Choose photos", detail = "Select several pictures at once", icon = Icons.Default.PhotoLibrary,
                 onClick = onChoosePhotos)
             TvSettingRow("Photo folder", detail = if (settings.folderUri == null) "Use a folder as a slideshow" else "Folder selected",
@@ -69,6 +72,14 @@ internal fun WallpaperSettingsPanel(settings: WallpaperSettings, onSave: (Wallpa
             TvSettingRow("Advanced", detail = "Online photo links", icon = Icons.Default.Tune,
                 onClick = { page = WallpaperPage.Advanced })
         }
+        WallpaperPage.BuiltIn -> BuiltInWallpaperPicker(settings.photos.singleOrNull()?.uri,
+            onSelect = { wallpaper ->
+                onSave(settings.copy(photos = listOf(WallpaperPhoto(wallpaper.uri)), folderUri = null))
+                page = WallpaperPage.Sources
+            }, onBack = { page = WallpaperPage.Sources }, onUseAll = {
+                onSave(settings.copy(photos = BuiltInWallpapers.items.map { WallpaperPhoto(it.uri) }, folderUri = null))
+                page = WallpaperPage.Sources
+            })
         WallpaperPage.Slideshow -> TvPanel("Slideshow", onBack = { page = WallpaperPage.Sources }) {
             Text("Selected photos and the photo folder rotate together.", style = MaterialTheme.typography.bodySmall)
             TvSettingRow("Next photo", icon = Icons.Default.PhotoLibrary, onClick = onNext)

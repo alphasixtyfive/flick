@@ -33,7 +33,7 @@ Location search and conditions use Open-Meteo.
 Open Settings → Profiles to add or edit people. Select the photo row in an existing profile to choose
 an avatar through Android's document picker. Select a profile from the home-screen avatar to switch users.
 
-Select **Profile wallpaper** while editing an existing profile to choose its own picture. That picture
+Select **Profile wallpaper** while editing an existing profile to choose a built-in wallpaper or your own picture. That picture
 stays fixed while the profile is active; other profiles keep their own picture or the shared slideshow.
 Select **Use shared wallpapers** to remove the override. Only adults can change profile wallpapers.
 
@@ -61,6 +61,7 @@ selection works offline; while the signal remains unavailable, TV-only power cha
 
 Open Settings → Wallpapers:
 
+- Built-in wallpapers previews nine included pictures. Choose one or use all as a slideshow; no network or photo provider is needed.
 - Choose photos adds several images through Android's document picker.
 - Photo folder adds a folder to the slideshow.
 - Selected photos lets you preview and remove individual selections.
@@ -70,6 +71,9 @@ Open Settings → Wallpapers:
 Adding photos keeps existing selections. A folder scan includes its immediate JPEG, PNG and WebP
 files, up to 500 photos; it does not scan subfolders. Android must grant persistent read access.
 If a provider revokes access, select the folder or picture again.
+
+A fresh installation starts with Midnight Ribbon. Updating Flick preserves your current photo selection,
+including an intentionally empty selection. Full-resolution versions are in the [4K wallpaper collection](wallpapers/).
 
 NAS folders need an installed Android document provider that exposes them. Flick does not include
 an SMB client. Existing HTTP photo servers can supply direct image links under Advanced.

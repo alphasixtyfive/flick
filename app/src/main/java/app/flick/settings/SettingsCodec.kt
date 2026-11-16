@@ -1,6 +1,7 @@
 package app.flick.settings
 
 import app.flick.profiles.Profile
+import app.flick.wallpaper.validWallpaperPhotoUri
 import app.flick.profiles.ProfileStartup
 import app.flick.weather.WeatherLocation
 import org.json.JSONArray
@@ -109,13 +110,7 @@ object SettingsCodec {
 
     private fun wallpaperUri(value: String): String? {
         val clean = value.trim().takeIf { it.isNotEmpty() } ?: return null
-        val uri = runCatching { java.net.URI(clean) }.getOrNull()
-        require(clean.length <= 4096 && clean.none(Char::isISOControl) && !clean.contains('\\') &&
-            uri != null && uri.rawUserInfo == null && when (uri.scheme) {
-                "http", "https" -> !uri.host.isNullOrBlank()
-                "content" -> !uri.rawAuthority.isNullOrBlank()
-                else -> false
-            }) { "Choose a profile wallpaper using the photo picker or an HTTP(S) image" }
+        require(validWallpaperPhotoUri(clean)) { "Choose a built-in wallpaper, document photo or HTTP(S) image" }
         return clean
     }
 

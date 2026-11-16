@@ -10,6 +10,7 @@ Requires Android 8.0 or later.
 - Favourite apps, All apps and Continue watching, with remote long-press menus.
 - Adult and child profiles, parent PINs, profile photos and individual wallpapers.
 - Photo slideshows from selected pictures, document folders or image URLs.
+- Nine built-in wallpapers, with offline previews and a separate [4K download collection](wallpapers/).
 - Clock, weather, navigation sounds and configurable home-screen controls.
 - Home Assistant lights, switches, scenes and device status.
 - Optional TV pairing for notifications and remote profile/wallpaper management.

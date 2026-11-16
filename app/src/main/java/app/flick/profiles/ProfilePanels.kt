@@ -13,6 +13,7 @@ import androidx.compose.ui.unit.dp
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import app.flick.apps.AppEntry
+import app.flick.wallpaper.BuiltInWallpaperPicker
 import app.flick.ui.components.NativeTextField
 import app.flick.ui.components.TvDialog
 import app.flick.ui.components.TvPanel
@@ -56,7 +57,8 @@ internal fun ProfileEditor(profile: Profile, profiles: List<Profile>, apps: List
     onSave: (Profile, String, (Result<Unit>) -> Unit) -> Unit,
     onDelete: (Profile, (Result<Unit>) -> Unit) -> Unit,
     onChoosePhoto: (Profile) -> Unit, onRemovePhoto: (Profile) -> Unit,
-    onChooseWallpaper: (Profile) -> Unit, onRemoveWallpaper: (Profile) -> Unit, onBack: () -> Unit) {
+    onChooseWallpaper: (Profile) -> Unit, onRemoveWallpaper: (Profile) -> Unit,
+    onSetWallpaper: (Profile, String) -> Unit, onBack: () -> Unit) {
     var name by remember(profile.id) { mutableStateOf(profile.name) }
     var child by remember(profile.id) { mutableStateOf(profile.child) }
     var allowed by remember(profile.id) { mutableStateOf(profile.allowedApps.toSet()) }
@@ -66,6 +68,8 @@ internal fun ProfileEditor(profile: Profile, profiles: List<Profile>, apps: List
     var completion by remember(profile.id) { mutableStateOf<ProfileEditCompletion?>(null) }
     var localError by remember(profile.id) { mutableStateOf<String?>(null) }
     var confirmDelete by remember(profile.id) { mutableStateOf(false) }
+    var choosingWallpaper by remember(profile.id) { mutableStateOf(false) }
+    var builtInWallpaper by remember(profile.id) { mutableStateOf(false) }
     val currentProfile = profiles.find { it.id == profile.id } ?: profile
     // A result received after Back only updates detached state; it cannot navigate.
     LaunchedEffect(completion) {
@@ -87,6 +91,13 @@ internal fun ProfileEditor(profile: Profile, profiles: List<Profile>, apps: List
     val existing = profiles.any { it.id == profile.id }
     val otherProfiles = profiles.filterNot { it.id == profile.id }
     val needsPin = !child && otherProfiles.any { it.child } && currentProfile.pinHash == null
+    if (builtInWallpaper) {
+        BuiltInWallpaperPicker(currentProfile.wallpaperUri, onSelect = {
+            onSetWallpaper(currentProfile, it.uri)
+            builtInWallpaper = false
+        }, onBack = { builtInWallpaper = false })
+        return
+    }
     TvPanel(if (existing) "Edit profile" else "Add profile", onBack = onBack) {
         if (existing) {
             ProfileRow(currentProfile.copy(name = name.ifBlank { currentProfile.name }), detail = "Change photo",
@@ -95,7 +106,7 @@ internal fun ProfileEditor(profile: Profile, profiles: List<Profile>, apps: List
                 onClick = { if (pending == null) onRemovePhoto(currentProfile) })
             TvSettingRow("Profile wallpaper", icon = Icons.Default.Wallpaper,
                 detail = if (currentProfile.wallpaperUri == null) "Using shared wallpapers" else "Custom wallpaper",
-                onClick = { if (pending == null) onChooseWallpaper(currentProfile) })
+                onClick = { if (pending == null) choosingWallpaper = true })
             if (currentProfile.wallpaperUri != null) TvSettingRow("Use shared wallpapers", icon = Icons.Default.PhotoLibrary,
                 onClick = { if (pending == null) onRemoveWallpaper(currentProfile) })
         } else Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
@@ -160,6 +171,16 @@ internal fun ProfileEditor(profile: Profile, profiles: List<Profile>, apps: List
             TvSettingRow(if (pending == ProfileEditOperation.Delete) "Deleting…" else "Delete profile", icon = Icons.Default.Delete,
                 onClick = { if (pending == null) confirmDelete = true })
         }
+    }
+    if (choosingWallpaper) TvDialog("Profile wallpaper", onDismiss = { choosingWallpaper = false }) {
+        TvSettingRow("Built-in wallpapers", icon = Icons.Default.Wallpaper, onClick = {
+            choosingWallpaper = false
+            builtInWallpaper = true
+        })
+        TvSettingRow("Choose photo", icon = Icons.Default.PhotoLibrary, onClick = {
+            choosingWallpaper = false
+            onChooseWallpaper(currentProfile)
+        })
     }
     if (confirmDelete) TvDialog("Delete ${currentProfile.name}?", onDismiss = { confirmDelete = false }) {
         Text("This profile and its preferences will be removed.", style = MaterialTheme.typography.bodyMedium)

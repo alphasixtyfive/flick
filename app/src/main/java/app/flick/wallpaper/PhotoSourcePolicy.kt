@@ -4,6 +4,18 @@ import java.net.URI
 
 internal const val MAX_CONFIGURED_PHOTOS = 500
 
+internal fun validWallpaperPhotoUri(value: String): Boolean = runCatching {
+    val clean = value.trim()
+    if (clean.length !in 1..4096 || value.any(Char::isISOControl) || clean.contains('\\')) return@runCatching false
+    if (BuiltInWallpapers.find(clean) != null) return@runCatching true
+    val uri = URI(clean)
+    uri.rawUserInfo == null && when (uri.scheme) {
+        "http", "https" -> !uri.host.isNullOrBlank()
+        "content" -> !uri.rawAuthority.isNullOrBlank()
+        else -> false
+    }
+}.getOrDefault(false)
+
 internal fun validOnlinePhotoUrl(value: String): Boolean = runCatching {
     val uri = URI(value.trim())
     value.trim().length <= 4096 && uri.scheme in listOf("http", "https") &&
@@ -12,6 +24,7 @@ internal fun validOnlinePhotoUrl(value: String): Boolean = runCatching {
 
 /** A photo label never includes credentials, query parameters or fragments. */
 internal fun photoSourceLabel(value: String): String = runCatching {
+    BuiltInWallpapers.find(value)?.let { return@runCatching it.title }
     val uri = URI(value)
     if (uri.scheme !in listOf("http", "https")) return@runCatching "Selected photo"
     val host = uri.host ?: return@runCatching "Selected photo"

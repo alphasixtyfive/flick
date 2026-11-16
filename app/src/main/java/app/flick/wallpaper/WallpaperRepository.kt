@@ -263,7 +263,7 @@ class WallpaperRepository(context: Context, scope: CoroutineScope) {
         require(value.intervalSeconds in 30..86400) { "Photo interval must be between 30 seconds and one day" }
         require(value.dimAmount.isFinite() && value.dimAmount in 0f..0.7f) { "Wallpaper dimming must be between 0 and 70%" }
         val photos = value.photos.map { photo ->
-            require(validPhotoUri(photo.uri)) { "Use an HTTP, HTTPS or document photo" }
+            require(validPhotoUri(photo.uri)) { "Choose a built-in wallpaper, HTTP(S) image or document photo" }
             WallpaperPhoto(photo.uri.trim())
         }.distinctBy { it.uri }
         val folder = value.folderUri?.trim()?.takeIf { it.isNotEmpty() }?.also {
@@ -276,16 +276,7 @@ class WallpaperRepository(context: Context, scope: CoroutineScope) {
         return validated
     }
 
-    private fun validPhotoUri(value: String): Boolean {
-        if (value.isBlank() || value.length > MAX_URI) return false
-        if (value.any(Char::isISOControl) || value.contains('\\')) return false
-        val uri = runCatching { Uri.parse(value.trim()) }.getOrNull() ?: return false
-        return when (uri.scheme) {
-            "http", "https" -> !uri.host.isNullOrEmpty() && uri.userInfo == null
-            "content" -> !uri.authority.isNullOrEmpty()
-            else -> false
-        }
-    }
+    private fun validPhotoUri(value: String): Boolean = validWallpaperPhotoUri(value)
 
     /** One level only. A provider cannot make folder traversal recursive or unbounded. */
     private suspend fun scanFolder(value: String): List<WallpaperPhoto> = withTimeoutOrNull(5000) {
@@ -350,7 +341,7 @@ class WallpaperRepository(context: Context, scope: CoroutineScope) {
     }.getOrDefault(emptyList())
 
     private fun readSettings(): WallpaperSettings = runCatching {
-        val raw = preferences.getString("settings", null) ?: return@runCatching WallpaperSettings()
+        val raw = preferences.getString("settings", null) ?: return@runCatching BuiltInWallpapers.initialSettings()
         if (raw.length > 3_000_000) return@runCatching WallpaperSettings()
         val json = JSONObject(raw)
         val photos = json.optJSONArray("photos") ?: JSONArray()
