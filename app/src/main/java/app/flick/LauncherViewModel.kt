@@ -20,6 +20,7 @@ import app.flick.settings.SettingsStore
 import app.flick.wallpaper.WallpaperRepository
 import app.flick.wallpaper.WallpaperSettings
 import app.flick.weather.WeatherRepository
+import app.flick.weather.WeatherLocation
 import app.flick.weather.refreshWeather
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
@@ -46,6 +47,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     private var placeSearch: Job? = null
     private var placeSearchGeneration = 0L
     private var weatherLoop: Job? = null
+    private var displayedWeatherLocation: WeatherLocation? = null
     private var catalogueRead: Job? = null
     private var continueRead: Job? = null
     private var active = true
@@ -85,7 +87,10 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             refreshContinue()
             weatherLoop = viewModelScope.launch {
                 store.state.map { settings -> settings.weatherLocation.takeIf { settings.showWeather } }.distinctUntilChanged().collectLatest { location ->
-                    mutable.update { it.copy(weather = null) }
+                    if (displayedWeatherLocation != location) {
+                        displayedWeatherLocation = location
+                        mutable.update { it.copy(weather = null) }
+                    }
                     if (location != null) refreshWeather(
                         load = { weather.conditions(location) },
                         onReading = { reading -> mutable.update { it.copy(weather = reading) } },

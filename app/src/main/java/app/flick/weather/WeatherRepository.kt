@@ -50,10 +50,10 @@ class WeatherRepository {
             ?.let { return@withLock it.reading }
         val url = "https://api.open-meteo.com/v1/forecast".toHttpUrl().newBuilder()
             .addQueryParameter("latitude", location.latitude.toString()).addQueryParameter("longitude", location.longitude.toString())
-            .addQueryParameter("current", "temperature_2m,weather_code")
+            .addQueryParameter("current", "temperature_2m,weather_code,is_day")
             .addQueryParameter("temperature_unit", if (location.fahrenheit) "fahrenheit" else "celsius").build()
         val current = read(url.toString()).getJSONObject("current")
-        WeatherReading(kotlin.math.round(current.getDouble("temperature_2m")).toInt(), current.getInt("weather_code"))
+        parseConditions(current)
             .also { cached = CachedConditions(location, it, System.nanoTime()) }
     }
 
@@ -88,4 +88,19 @@ class WeatherRepository {
     fun close() {
         if (closed.compareAndSet(false, true)) client.closeAsync()
     }
+}
+
+/** Reject incomplete readings so refresh can retain the last known conditions. */
+internal fun parseConditions(current: JSONObject): WeatherReading {
+    val temperature = current.getDouble("temperature_2m")
+    require(temperature.isFinite() && temperature >= Int.MIN_VALUE && temperature <= Int.MAX_VALUE) {
+        "Weather returned an invalid temperature"
+    }
+    val daylight = current.getDouble("is_day")
+    require(daylight == 0.0 || daylight == 1.0) { "Weather returned an invalid day/night value" }
+    val code = current.getDouble("weather_code")
+    require(code.isFinite() && code >= Int.MIN_VALUE && code <= Int.MAX_VALUE && code % 1.0 == 0.0) {
+        "Weather returned an invalid condition"
+    }
+    return WeatherReading(kotlin.math.round(temperature).toInt(), code.toInt(), daylight == 1.0)
 }

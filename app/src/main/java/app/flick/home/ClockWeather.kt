@@ -1,8 +1,6 @@
 package app.flick.home
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -18,6 +16,7 @@ import androidx.tv.material3.*
 import app.flick.ui.theme.FlickColors
 import app.flick.ui.theme.TvLayout
 import app.flick.weather.WeatherReading
+import app.flick.weather.icon
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import kotlinx.coroutines.delay
@@ -101,8 +100,7 @@ internal fun ClockWeather(clock24: Boolean, showWeather: Boolean, weatherLocatio
                 Box(Modifier.width(weatherWidth).height(metadataHeight), contentAlignment = Alignment.Center) {
                     weather?.let { weather ->
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(iconGap)) {
-                            Icon(if (weather.code == 0) Icons.Default.WbSunny else Icons.Default.Cloud,
-                                contentDescription = null, modifier = Modifier.size(iconSize))
+                            Icon(weather.icon, contentDescription = weather.condition.label, modifier = Modifier.size(iconSize))
                             Text(temperature.orEmpty(), style = metadataStyle, color = FlickColors.Secondary,
                                 maxLines = 1, softWrap = false)
                         }
