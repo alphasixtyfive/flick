@@ -35,14 +35,18 @@ class NotificationService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        val runtime = (application as FlickApplication).runtime
-        controller = runtime.notifications
         try {
+            if (intent != null && intent.action != StartBackground) {
+                shutdown()
+                return START_NOT_STICKY
+            }
+            // Enter foreground before lazy runtime initialization can read private settings.
+            promote()
+            val runtime = (application as FlickApplication).runtime
+            controller = runtime.notifications
             if (intent == null) {
-                // Meet Android's foreground deadline before waiting for private settings.
-                val generation = controller.recoverBackgroundRequest() ?: run { stopSelf(); return START_NOT_STICKY }
+                val generation = controller.recoverBackgroundRequest() ?: run { shutdown(); return START_NOT_STICKY }
                 backgroundEnabled = true
-                promote()
                 if (!started) {
                     started = true
                     controller.serviceStarted(this)
@@ -61,23 +65,17 @@ class NotificationService : Service() {
                 }
                 return START_STICKY
             }
-            when (intent.action) {
-                StartBackground -> {
-                    recovery?.cancel()
-                    recovery = null
-                    backgroundEnabled = controller.backgroundRequested
-                    if (!backgroundEnabled) { stopSelf(); return START_NOT_STICKY }
-                    promote()
-                }
-                else -> { stopSelf(); return START_NOT_STICKY }
-            }
+            recovery?.cancel()
+            recovery = null
+            backgroundEnabled = controller.backgroundRequested
+            if (!backgroundEnabled) { shutdown(); return START_NOT_STICKY }
             if (!started) {
                 started = true
                 controller.serviceStarted(this)
                 runtime.onBackgroundServiceStarted()
             }
         } catch (_: RuntimeException) {
-            controller.serviceFailed()
+            if (::controller.isInitialized) controller.serviceFailed()
             shutdown()
         }
         return restartPolicy()
