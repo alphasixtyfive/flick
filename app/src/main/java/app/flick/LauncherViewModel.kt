@@ -20,6 +20,7 @@ import app.flick.settings.SettingsStore
 import app.flick.wallpaper.WallpaperRepository
 import app.flick.wallpaper.WallpaperSettings
 import app.flick.weather.WeatherRepository
+import app.flick.weather.refreshWeather
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.sync.Mutex
@@ -78,10 +79,10 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             weatherLoop = viewModelScope.launch {
                 store.state.map { settings -> settings.weatherLocation.takeIf { settings.showWeather } }.distinctUntilChanged().collectLatest { location ->
                     mutable.update { it.copy(weather = null) }
-                    if (location != null) while (isActive) {
-                        runCatching { weather.conditions(location) }.onSuccess { reading -> mutable.update { it.copy(weather = reading) } }
-                        delay(600_000)
-                    }
+                    if (location != null) refreshWeather(
+                        load = { weather.conditions(location) },
+                        onReading = { reading -> mutable.update { it.copy(weather = reading) } },
+                    )
                 }
             }
         } else continueRead?.cancel()
@@ -270,12 +271,16 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     fun saveProfilePhoto(profile: Profile, uri: String?) {
         editSettings { settings -> settings.copy(profiles = settings.profiles.map { if (it.id == profile.id) it.copy(avatar = uri) else it }) }
     }
+    fun saveProfileWallpaper(profile: Profile, uri: String?) {
+        editSettings { settings -> settings.copy(profiles = settings.profiles.map { if (it.id == profile.id) it.copy(wallpaperUri = uri) else it }) }
+    }
 
     fun saveProfile(profile: Profile, pin: String, onComplete: (Result<Unit>) -> Unit) {
         profileEdit(onComplete) { settings ->
             val previous = settings.profiles.firstOrNull { it.id == profile.id }
             val candidate = profile.copy(pinSalt = previous?.pinSalt, pinHash = previous?.pinHash,
-                avatar = if (previous != null) previous.avatar else profile.avatar)
+                avatar = if (previous != null) previous.avatar else profile.avatar,
+                wallpaperUri = if (previous != null) previous.wallpaperUri else profile.wallpaperUri)
             val protected = if (!candidate.child && pin.isNotEmpty()) withContext(Dispatchers.Default) {
                 ProfileSecurity.protect(candidate, pin)
             } else candidate
