@@ -115,7 +115,7 @@ fun NativeSettingsPanel(
                     Image(painterResource(R.drawable.flick_icon), contentDescription = null,
                         modifier = Modifier.size(48.dp).clip(RoundedCornerShape(TvLayout.RowRadius)))
                     Text("Flick", style = MaterialTheme.typography.titleMedium)
-                    Text("Version ${BuildConfig.VERSION_NAME} · Build ${BuildConfig.VERSION_CODE}",
+                    Text("Version ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",
                         style = MaterialTheme.typography.bodySmall, color = FlickColors.Secondary,
                         textAlign = TextAlign.Center)
                 }

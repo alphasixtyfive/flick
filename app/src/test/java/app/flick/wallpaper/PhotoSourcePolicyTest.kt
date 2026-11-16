@@ -14,7 +14,7 @@ class PhotoSourcePolicyTest {
 
     @Test fun labelsNeverExposeQueryFragmentOrLogin() {
         val label = photoSourceLabel("https://user:password@photos.example.test/family.jpg?signature=private#hidden")
-        assertEquals("photos.example.test · family.jpg", label)
+        assertEquals("family.jpg (photos.example.test)", label)
         assertFalse(label.contains("private"))
         assertFalse(label.contains("password"))
         assertFalse(label.contains("hidden"))

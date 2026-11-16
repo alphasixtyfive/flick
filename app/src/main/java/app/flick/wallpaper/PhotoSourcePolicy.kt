@@ -32,7 +32,7 @@ internal fun photoSourceLabel(value: String): String = runCatching {
         it.length in 1..100 && it.none(Char::isISOControl) &&
             it.substringAfterLast('.', "").lowercase() in listOf("jpg", "jpeg", "png", "webp", "avif", "heic", "heif")
     }
-    if (filename == null) host else "$host · $filename"
+    if (filename == null) host else "$filename ($host)"
 }.getOrDefault("Selected photo")
 
 /** Picker additions preserve existing remote photos and never silently truncate a collection. */

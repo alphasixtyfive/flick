@@ -323,7 +323,7 @@ fun FlickScreen(state: HomeState, actions: HomeActions) {
                     }
                 }
             }
-            if (moving != null) Text("Left / Right to move · OK to save · Back to cancel", style = MaterialTheme.typography.bodySmall)
+            if (moving != null) Text("Use Left or Right to move. OK saves. Back cancels.", style = MaterialTheme.typography.bodySmall)
             if (state.loading && apps.isEmpty()) Text("Loading apps…", style = MaterialTheme.typography.bodyMedium)
             if (!state.loading && child && displayedApps.isEmpty()) Text("No allowed apps are installed.", style = MaterialTheme.typography.bodyMedium)
         }

@@ -1,10 +1,13 @@
 package app.flick.homeassistant
 
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import app.flick.ui.components.NativeTextField
@@ -37,9 +40,9 @@ internal fun HomeAssistantControlsPanel(controls: List<HaControl>, connectionSta
                 control.pending -> if (scene) "Running…" else "Updating…"
                 connectionState != HaConnectionState.Connected -> "Waiting for Home Assistant"
                 !available -> "Unavailable"
-                control.error != null -> if (scene) "Couldn’t run · Select to retry" else "Couldn’t update · Select to retry"
-                scene -> "Run scene"
-                control.brightness != null && on -> "On · ${control.brightness}%"
+                control.error != null -> if (scene) "Couldn’t run. Try again." else "Couldn’t update. Try again."
+                scene -> if (control.kind == "script") "Run script" else "Run scene"
+                control.brightness != null && on -> "Brightness ${control.brightness}%"
                 toggle -> if (on) "On" else "Off"
                 else -> control.state.orEmpty().replaceFirstChar { it.uppercase() }
             }
@@ -83,8 +86,11 @@ internal fun HomeAssistantSetupPanel(configuration: HaConfiguration, connectionS
     }
     TvPanel("Home Assistant", onBack = onBack, focusKey = configuration.configured to connectionState) {
         if (configuration.configured) {
-            Text("${connectionState.label} · ${configuration.url}", style = MaterialTheme.typography.bodySmall,
-                color = FlickColors.Secondary, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(connectionState.label, style = MaterialTheme.typography.bodySmall)
+                Text(configuration.url, style = MaterialTheme.typography.bodySmall,
+                    color = FlickColors.Secondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
             if (connectionState == HaConnectionState.Offline) TvSettingRow(if (busy) "Retrying…" else "Retry",
                 icon = Icons.Default.Refresh, onClick = { if (!busy) onRetry() })
             val count = configuration.controls.size
@@ -101,11 +107,11 @@ internal fun HomeAssistantSetupPanel(configuration: HaConfiguration, connectionS
                     HaDisplayPower.On -> "TV on"
                     HaDisplayPower.Off -> "TV off"
                 }
-                TvSettingRow("Physical TV", detail = configuration.displayPowerEntity?.let { "${it.name} · $status" }
-                    ?: "Optional · Detect when your TV turns off", icon = Icons.Default.Tv,
+                TvSettingRow("Physical TV", detail = configuration.displayPowerEntity?.let { "${it.name}\n$status" }
+                    ?: "Detect when your TV turns off", icon = Icons.Default.Tv,
                     onClick = { if (!busy) choosingDisplay = true })
             }
-            TvSettingRow("TV integration", detail = "Optional · Notifications and TV management", icon = Icons.Default.Tv,
+            TvSettingRow("TV integration", detail = "Notifications and TV management", icon = Icons.Default.Tv,
                 onClick = onIntegration)
             TvSettingRow("Disconnect", icon = Icons.Default.LinkOff,
                 onClick = { if (!busy) onConfigure("", "") })

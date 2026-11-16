@@ -35,7 +35,7 @@ internal fun ProfileManagementPanel(profiles: List<Profile>, activeProfileId: St
         profiles.forEach { profile -> key(profile.id) {
             val active = profile.id == activeProfileId
             val role = if (profile.child) "Child" else "Adult"
-            ProfileRow(profile, detail = if (active) "$role · Active" else role, active = active,
+            ProfileRow(profile, detail = role, active = active,
                 onClick = { onEdit(profile) })
         } }
         if (profiles.size < 12) TvSettingRow("Add profile", icon = Icons.Default.Add, onClick = onAdd)

@@ -48,7 +48,7 @@ internal fun IntegrationPanel(state: HomeState, actions: HomeActions, onBack: ()
                         onClick = { actions.openProjectLink("https://github.com/alphasixtyfive/flick#home-assistant") })
                 } else {
                     TvSettingRow("Enable TV integration", checked = bridge.enabled, icon = Icons.Default.Link,
-                        detail = if (bridge.enabled) "Paired with Home Assistant" else "Paused · Pairing is saved",
+                        detail = if (bridge.enabled) "Paired with Home Assistant" else "Paused. Pairing is saved.",
                         onClick = { actions.setIntegrationEnabled(!bridge.enabled) })
                     TvSettingRow("Notifications", detail = when {
                         !bridge.notificationsEnabled -> "Off"
@@ -72,7 +72,7 @@ internal fun IntegrationPanel(state: HomeState, actions: HomeActions, onBack: ()
                 state.notifications.message?.let { IntegrationDetail(it) }
             }
             IntegrationPage.Management -> {
-                IntegrationDetail("Let Home Assistant administrators manage profiles and wallpapers. This is separate from light controls and notifications.")
+                IntegrationDetail("Let Home Assistant administrators manage profiles and wallpapers while an adult profile is unlocked. Light controls and notifications work separately.")
                 TvSettingRow("Allow launcher management", checked = bridge.allowManagement, icon = Icons.Default.ManageAccounts,
                     onClick = { actions.setLauncherManagement(!bridge.allowManagement) })
                 if (!bridge.enabled) IntegrationDetail("TV integration is paused. Your choice is saved until you enable it.")
