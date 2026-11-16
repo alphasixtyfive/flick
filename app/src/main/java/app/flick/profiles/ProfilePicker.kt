@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -134,28 +133,30 @@ private fun ProfileChoices(
 @Composable
 private fun ProfileAvatarChoice(profile: Profile, active: Boolean, modifier: Modifier, onChoose: () -> Unit) {
     val pinProtected = !profile.child && profile.pinHash != null
-    Column(Modifier.width(112.dp).height(128.dp), horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Box(Modifier.size(84.dp)) {
-            TvFocusSurface(onClick = onChoose, shape = CircleShape, containerColor = Color.Transparent,
-                modifier = modifier.fillMaxSize().semantics {
-                    contentDescription = profile.name
-                    selected = active
-                    val role = if (profile.child) "Child profile" else "Adult profile"
-                    stateDescription = (if (active) "Active profile, " else "") + role + if (pinProtected) ", PIN protected" else ""
-                }) {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { ProfileAvatar(profile, 72.dp) }
-            }
-            if (active) Box(Modifier.align(Alignment.BottomEnd).size(20.dp).background(FlickColors.Foreground, CircleShape),
-                contentAlignment = Alignment.Center) {
-                Icon(Icons.Default.Check, contentDescription = null, tint = FlickColors.FocusForeground, modifier = Modifier.size(14.dp))
-            }
+    Column(Modifier.width(112.dp), horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        TvFocusSurface(onClick = onChoose, shape = CircleShape, containerColor = Color.Transparent,
+            modifier = modifier.size(84.dp).semantics {
+                contentDescription = profile.name
+                selected = active
+                val role = if (profile.child) "Child profile" else "Adult profile"
+                stateDescription = (if (active) "Active profile, " else "") + role + if (pinProtected) ", PIN protected" else ""
+            }) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { ProfileAvatar(profile, 72.dp) }
         }
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally)) {
             Text(profile.name, style = MaterialTheme.typography.bodyLarge, maxLines = 1,
                 overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, modifier = Modifier.weight(1f, fill = false))
             if (pinProtected) Icon(Icons.Default.Lock, contentDescription = null, tint = FlickColors.Secondary, modifier = Modifier.size(12.dp))
+        }
+        // Reserve the status row for every profile so focus never changes the layout.
+        Box(Modifier.fillMaxWidth().heightIn(min = 24.dp), contentAlignment = Alignment.Center) {
+            if (active) Row(verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(14.dp))
+                Text("Active", style = MaterialTheme.typography.bodySmall)
+            }
         }
     }
 }
