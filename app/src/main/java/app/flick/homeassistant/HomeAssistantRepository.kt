@@ -59,6 +59,12 @@ class HomeAssistantRepository(context: Context, scope: CoroutineScope) {
     private val mutableConnectionState = MutableStateFlow(HaConnectionState.Unknown)
     private val mutableCredentialRevision = MutableStateFlow(0L)
     private var health = HaConnectionHealth()
+    private val displayMonitor = HaDisplayPowerMonitor()
+    private val mutableDisplayPower = MutableStateFlow(HaDisplayPower.Disabled)
+    val displayPower: StateFlow<HaDisplayPower> = mutableDisplayPower.asStateFlow()
+    private val mutableDisplayPowerInterruptions = MutableStateFlow(0L)
+    /** Durable across rapid Off→On events; StateFlow conflation must not lose a session boundary. */
+    val displayPowerInterruptions: StateFlow<Long> = mutableDisplayPowerInterruptions.asStateFlow()
     val connectionState: StateFlow<HaConnectionState> = mutableConnectionState.asStateFlow()
     val credentialRevision: StateFlow<Long> = mutableCredentialRevision.asStateFlow()
     val configuration: StateFlow<HaConfiguration> = mutableConfiguration.asStateFlow()
@@ -73,7 +79,7 @@ class HomeAssistantRepository(context: Context, scope: CoroutineScope) {
             try {
                 credentials = store.credentials()
                 val selected = store.controls()
-                mutableConfiguration.value = HaConfiguration(store.url(), credentials != null, selected)
+                mutableConfiguration.value = HaConfiguration(store.url(), credentials != null, selected, store.displayPowerEntity())
                 mutableControls.value = selected.map { initial(it) }
             } catch (cancelled: CancellationException) {
                 throw cancelled
@@ -109,12 +115,13 @@ class HomeAssistantRepository(context: Context, scope: CoroutineScope) {
             val replacement = HaCredentials(address, secret)
             validateApi(replacement)
             val selected = if (configuration.value.url == address) configuration.value.controls else emptyList()
-            try { store.save(replacement, selected) } catch (_: Exception) { throw HaException("Home Assistant sign-in could not be saved") }
+            val displayEntity = configuration.value.displayPowerEntity.takeIf { configuration.value.url == address }
+            try { store.save(replacement, selected, displayEntity) } catch (_: Exception) { throw HaException("Home Assistant sign-in could not be saved") }
             synchronized(this@HomeAssistantRepository) {
                 actions.keys.forEach { it.cancel() }
                 credentials = replacement
                 generation.incrementAndGet()
-                mutableConfiguration.value = HaConfiguration(address, true, selected)
+                mutableConfiguration.value = HaConfiguration(address, true, selected, displayEntity)
                 mutableControls.value = selected.map { initial(it) }
                 mutableCredentialRevision.value++
             }
@@ -132,7 +139,13 @@ class HomeAssistantRepository(context: Context, scope: CoroutineScope) {
         validateApi(HaCredentials(address, secret))
     }
 
-    suspend fun discover(): List<HaEntity> = withContext(Dispatchers.IO) {
+    suspend fun discover(): List<HaEntity> = discoverEntities(HaPolicy::domain)
+
+    suspend fun discoverDisplayPlayers(): List<HaEntity> = discoverEntities { id ->
+        HaDisplayPowerPolicy.entityId(id)?.let { "media_player" }
+    }
+
+    private suspend fun discoverEntities(domainFor: (String) -> String?): List<HaEntity> = withContext(Dispatchers.IO) {
         ready()
         val (connection, epoch) = snapshot()
         val values = try {
@@ -146,7 +159,7 @@ class HomeAssistantRepository(context: Context, scope: CoroutineScope) {
         (0 until values.length()).mapNotNull { index ->
             val item = values.optJSONObject(index) ?: return@mapNotNull null
             val id = item.optString("entity_id")
-            val domain = HaPolicy.domain(id) ?: return@mapNotNull null
+            val domain = domainFor(id) ?: return@mapNotNull null
             val name = HaPolicy.text(item.optJSONObject("attributes")?.optString("friendly_name").orEmpty())
                 .ifEmpty { id.substringAfter('.').replace('_', ' ') }
             HaEntity(id, name, domain)
@@ -167,6 +180,24 @@ class HomeAssistantRepository(context: Context, scope: CoroutineScope) {
             }
         }
         restartSession(keepHttp = true)
+    }
+
+    suspend fun saveDisplayPowerEntity(value: HaControlSpec?) = withContext(Dispatchers.IO) {
+        ready()
+        val selected = HaDisplayPowerPolicy.selection(value)
+        settingsLock.withLock {
+            requireCredentials()
+            try { store.saveDisplayPowerEntity(selected) } catch (_: Exception) {
+                throw HaException("The physical TV selection could not be saved")
+            }
+            synchronized(this@HomeAssistantRepository) {
+                actions.keys.forEach { it.cancel() }
+                generation.incrementAndGet()
+                mutableConfiguration.value = configuration.value.copy(displayPowerEntity = selected)
+                mutableControls.update { list -> list.map { it.copy(pending = false) } }
+            }
+            restartSession(keepHttp = true)
+        }
     }
 
     /** Retry uses the saved, origin-bound credentials and preserves the selected controls. */
@@ -284,6 +315,10 @@ class HomeAssistantRepository(context: Context, scope: CoroutineScope) {
     @Synchronized
     private fun observed(id: String, value: JSONObject?, epoch: Long, expectedVersion: Long? = null) {
         if (closed || generation.get() != epoch) return
+        if (id == configuration.value.displayPowerEntity?.entityId && expectedVersion == null) {
+            displayMonitor.observe(id, value?.optString("state"))
+            publishDisplayPower()
+        }
         if (expectedVersion != null && versions[id]?.get() != expectedVersion) return
         val spec = configuration.value.controls.firstOrNull { it.entityId == id } ?: return
         val state = value?.optString("state")?.let { HaPolicy.text(it, 80) }?.takeIf { it.isNotEmpty() }
@@ -304,6 +339,8 @@ class HomeAssistantRepository(context: Context, scope: CoroutineScope) {
     private fun restartSession(authenticatedHttp: Boolean = false, keepHttp: Boolean = false) {
         session?.cancel()
         stream = null
+        displayMonitor.select(configuration.value.displayPowerEntity?.entityId)
+        publishDisplayPower()
         val connection = credentials
         if (connection == null || closed) {
             mutableConnectionState.value = HaConnectionState.NotConfigured
@@ -314,11 +351,12 @@ class HomeAssistantRepository(context: Context, scope: CoroutineScope) {
         health = HaConnectionHealth(httpAvailable = httpConfirmed)
         mutableConnectionState.value = health.state
         session = worker.launch {
-            val events = if (configuration.value.controls.isNotEmpty()) HaEventStream(eventsClient, this, connection,
-                selected = { configuration.value.controls.map { it.entityId }.toSet() },
+            val events = if (configuration.value.observedEntityIds().isNotEmpty()) HaEventStream(eventsClient, this, connection,
+                selected = { configuration.value.observedEntityIds() },
                 observed = { id, value -> observed(id, value, epoch) },
                 ready = {
                     reportEvents(epoch, available = true)
+                    refreshDisplayPower(connection, epoch)
                     refresh()
                 },
                 unavailable = { rejected -> reportEvents(epoch, available = false, rejected = rejected) }) else null
@@ -335,6 +373,29 @@ class HomeAssistantRepository(context: Context, scope: CoroutineScope) {
                 checkConnection(connection, epoch)
                 if (events?.connected != true && connectionState.value == HaConnectionState.Connected) refresh()
             }
+        }
+    }
+
+    /** One bounded read after subscription; live updates use the existing event stream. */
+    private suspend fun refreshDisplayPower(connection: HaCredentials, epoch: Long) {
+        val selection = synchronized(this@HomeAssistantRepository) {
+            if (closed || epoch != generation.get()) null
+            else configuration.value.displayPowerEntity?.let { spec ->
+                displayMonitor.snapshotRevision()?.let { spec.entityId to it }
+            }
+        } ?: return
+        try {
+            val response = JSONObject(transport.request(connection, "/api/states/${selection.first}"))
+            synchronized(this@HomeAssistantRepository) {
+                if (!closed && epoch == generation.get()) {
+                    displayMonitor.observe(selection.first, response.optString("state"), selection.second)
+                    publishDisplayPower()
+                }
+            }
+        } catch (cancelled: CancellationException) { throw cancelled }
+        catch (error: Exception) {
+            if ((error as? HaException)?.authenticationRejected == true) reportHttp(epoch, available = false, rejected = true)
+            // Keep Unknown. A missing or unavailable TV must never imply it stayed on.
         }
     }
 
@@ -358,6 +419,10 @@ class HomeAssistantRepository(context: Context, scope: CoroutineScope) {
     private fun reportHttp(epoch: Long, available: Boolean, rejected: Boolean = false) {
         if (closed || epoch != generation.get()) return
         health = health.httpResult(available, rejected)
+        if (rejected) {
+            displayMonitor.connection(false)
+            publishDisplayPower()
+        }
         mutableConnectionState.value = health.state
     }
 
@@ -365,7 +430,14 @@ class HomeAssistantRepository(context: Context, scope: CoroutineScope) {
     private fun reportEvents(epoch: Long, available: Boolean, rejected: Boolean = false) {
         if (closed || epoch != generation.get()) return
         health = health.eventsResult(available, rejected)
+        displayMonitor.connection(available)
+        publishDisplayPower()
         mutableConnectionState.value = health.state
+    }
+
+    private fun publishDisplayPower() {
+        mutableDisplayPower.value = displayMonitor.state
+        mutableDisplayPowerInterruptions.value = displayMonitor.interruptions
     }
 
     @Synchronized
@@ -390,6 +462,8 @@ class HomeAssistantRepository(context: Context, scope: CoroutineScope) {
         closed = true; initialized.complete(Unit); credentials = null
         generation.incrementAndGet()
         mutableConnectionState.value = HaConnectionState.NotConfigured
+        displayMonitor.connection(false)
+        publishDisplayPower()
         client.closeAsync {
             actions.keys.forEach { it.cancel() }
             session?.cancel(); stream?.close(); worker.cancel()

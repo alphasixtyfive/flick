@@ -141,6 +141,7 @@ class MainActivity : ComponentActivity() {
                 openAndroid(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
         },
         chooseProfile = model::chooseProfile,
+        cancelProfileSelection = model::cancelProfileSelection,
         chooseProfilePhoto = ::chooseProfilePhoto,
         removeProfilePhoto = { model.saveProfilePhoto(it, null) },
         chooseProfileWallpaper = ::chooseProfileWallpaper,
@@ -159,6 +160,8 @@ class MainActivity : ComponentActivity() {
         setHomePower = model::setHomePower,
         runHomeScene = model::runHomeScene,
         configureHomeAssistant = model::configureHomeAssistant,
+        discoverDisplayPlayers = model::discoverDisplayPlayers,
+        saveDisplayPowerEntity = model::saveDisplayPowerEntity,
         discoverHomeEntities = model::discoverHomeEntities,
         retryHomeAssistant = model::retryHomeAssistant,
         pairHomeAssistant = {

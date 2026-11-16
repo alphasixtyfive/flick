@@ -52,6 +52,11 @@ Proactive `flick_tv/status` messages use flat fields `version`, `profile`, `prof
 The explicit `list_profiles` response may also contain `allowed_apps` and online avatar URLs.
 Neither response includes PINs, verifiers, salts or document grants.
 
+The reported profile is the selected/resume account, including while the startup chooser is locked.
+It is not an unlocked indicator. Protocol 1 has no session-authorization field; the TV independently
+requires a current adult session for launcher management. Notifications may still arrive while locked,
+but notification action buttons require an adult session.
+
 ## Notifications and bounds
 
 Notifications allow a 100-character title, 2048-character message and up to two action records

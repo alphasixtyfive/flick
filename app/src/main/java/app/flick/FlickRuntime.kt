@@ -1,19 +1,28 @@
 package app.flick
 
 import android.content.Context
+import android.content.BroadcastReceiver
+import android.content.Intent
+import android.content.IntentFilter
+import android.os.Build
+import android.os.PowerManager
 import app.flick.apps.AndroidCatalogue
-import app.flick.home.HomePolicy
 import app.flick.homeassistant.HomeAssistantRepository
 import app.flick.integration.BridgeCommand
 import app.flick.integration.FlickBridgeClient
 import app.flick.notifications.NotificationController
 import app.flick.platform.NavigationSounds
 import app.flick.profiles.ProfileSecurity
+import app.flick.profiles.ProfileSession
 import app.flick.settings.SettingsStore
 import app.flick.wallpaper.WallpaperRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
@@ -26,6 +35,7 @@ import java.util.concurrent.ConcurrentHashMap
 class FlickRuntime(context: Context) {
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     val store = SettingsStore(context)
+    internal val profileSession = ProfileSession(store.state.value)
     val navigationSounds = NavigationSounds(context.applicationContext)
     val profiles = ProfileSecurity(context)
     val catalogue = AndroidCatalogue(context)
@@ -33,13 +43,15 @@ class FlickRuntime(context: Context) {
     val wallpapers = WallpaperRepository(context, scope)
     val profileLock = Mutex()
     val privilegedJobs = ConcurrentHashMap.newKeySet<Job>()
+    internal var profileSelection: Job? = null
     @Volatile var switchingProfile = false
     private var visible = false
+    private val power = context.getSystemService(PowerManager::class.java)
     private val commands = LauncherCommands(this)
     val notifications = NotificationController(context, scope,
         onNavigationFeedback = { navigationSounds.play(store.state.value.navigationSound) }) { action ->
-        if (HomePolicy.canManage(store.state.value)) scope.launch {
-            runCatching { bridge.notificationAction(action.noticeId, action.actionId) }
+        if (canManage()) scope.launch {
+            runCatching { withAdultSession { bridge.notificationAction(action.noticeId, action.actionId) } }
         }
     }
     val bridge = FlickBridgeClient(context, scope, onCommand = { command: BridgeCommand ->
@@ -47,6 +59,20 @@ class FlickRuntime(context: Context) {
     }, status = { commands.status() })
 
     init {
+        val screenOff = object : BroadcastReceiver() {
+            override fun onReceive(context: Context, intent: Intent) {
+                if (intent.action == Intent.ACTION_SCREEN_OFF) revokeProfileSession()
+            }
+        }
+        // This receiver has the same lifetime as the process-owned session, including while an app plays.
+        if (Build.VERSION.SDK_INT >= 33) context.applicationContext.registerReceiver(screenOff,
+            IntentFilter(Intent.ACTION_SCREEN_OFF), Context.RECEIVER_NOT_EXPORTED)
+        else {
+            @Suppress("DEPRECATION")
+            context.applicationContext.registerReceiver(screenOff, IntentFilter(Intent.ACTION_SCREEN_OFF))
+        }
+        scope.launch { store.state.collect { reconcileProfileSession() } }
+        scope.launch { homeAssistant.displayPowerInterruptions.drop(1).collect { revokeProfileSession() } }
         scope.launch {
             homeAssistant.credentialRevision.drop(1).collect {
                 runCatching { bridge.reconnect() }
@@ -66,12 +92,14 @@ class FlickRuntime(context: Context) {
             }
         }
         scope.launch {
-            store.state.map { it.activeProfileId to HomePolicy.profile(it).child }.distinctUntilChanged().drop(1).collect {
+            combine(store.state, profileSession.state) { settings, _ ->
+                profileSession.profile(settings)?.let { it.id to it.child }
+            }.distinctUntilChanged().drop(1).collect {
                 notifications.dismissAll()
             }
         }
         scope.launch {
-            combine(store.state, notifications.state, bridge.state.map { it.connection }.distinctUntilChanged()) { _, _, _ -> Unit }
+            combine(store.state, profileSession.state, notifications.state, bridge.state.map { it.connection }.distinctUntilChanged()) { _, _, _, _ -> Unit }
                 .collectLatest {
                     delay(100)
                     runCatching { bridge.publishStatus() }
@@ -84,9 +112,45 @@ class FlickRuntime(context: Context) {
 
     /** Call from a visible activity: Android restricts starting services from the background. */
     fun resume() {
+        if (!power.isInteractive) revokeProfileSession()
         visible = true
         notifications.refreshPermissions()
         if (bridge.state.value.enabled) notifications.enableBackground(true)
     }
     fun pause() { visible = false }
+
+    internal fun canManage() = !store.requiresRecovery.value && profileSession.canManage(store.state.value)
+    internal fun canLaunch(packageName: String) = !store.requiresRecovery.value && profileSession.canLaunch(store.state.value, packageName)
+
+    internal fun revokeProfileSession() {
+        if (profileSession.revokeOnWake(store.state.value)) cancelSessionWork()
+    }
+
+    internal fun reconcileProfileSession() {
+        if (!switchingProfile && profileSession.reconcile(store.state.value)) cancelSessionWork()
+    }
+
+    private fun cancelSessionWork() {
+        profileSelection?.cancel()
+        privilegedJobs.toList().forEach { it.cancel() }
+        notifications.dismissAll()
+    }
+
+    /** A cancelled management operation must not cancel its caller's command/event loop. */
+    internal suspend fun <T> withAdultSession(block: suspend () -> T): T {
+        check(canManage() && !switchingProfile) { "Choose an adult profile first" }
+        return try {
+            coroutineScope {
+                val owner = currentCoroutineContext()[Job]!!
+                privilegedJobs.add(owner)
+                try {
+                    check(canManage() && !switchingProfile) { "Choose an adult profile first" }
+                    block()
+                } finally { privilegedJobs.remove(owner) }
+            }
+        } catch (cancelled: CancellationException) {
+            currentCoroutineContext().ensureActive()
+            error("The profile was locked. Choose an adult profile again.")
+        }
+    }
 }

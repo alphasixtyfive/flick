@@ -17,6 +17,7 @@ import app.flick.ui.components.NativeTextField
 import app.flick.ui.components.TvDialog
 import app.flick.ui.components.TvPanel
 import app.flick.ui.components.TvSettingRow
+import app.flick.ui.components.TvChoiceDialog
 
 private enum class ProfileEditOperation { Save, Delete }
 // Retries must remain distinct even when they report the same error.
@@ -24,7 +25,9 @@ private data class ProfileEditCompletion(val sequence: Int, val result: Result<U
 
 @Composable
 internal fun ProfileManagementPanel(profiles: List<Profile>, activeProfileId: String,
-    onEdit: (Profile) -> Unit, onAdd: () -> Unit, onBack: () -> Unit) {
+    onEdit: (Profile) -> Unit, onAdd: () -> Unit, onBack: () -> Unit,
+    startup: ProfileStartup, onStartupChange: (ProfileStartup) -> Unit) {
+    var choosingStartup by remember { mutableStateOf(false) }
     TvPanel("Profiles", onBack = onBack) {
         profiles.forEach { profile -> key(profile.id) {
             val active = profile.id == activeProfileId
@@ -34,7 +37,18 @@ internal fun ProfileManagementPanel(profiles: List<Profile>, activeProfileId: St
         } }
         if (profiles.size < 12) TvSettingRow("Add profile", icon = Icons.Default.Add, onClick = onAdd)
         else Text("Up to twelve profiles are supported.", style = MaterialTheme.typography.bodySmall)
+        TvSettingRow("On startup & wake", detail = startup.label(), icon = Icons.Default.PowerSettingsNew,
+            onClick = { choosingStartup = true })
+        Text("Ask requires a PIN for each adult. Other apps stay in control while they are open.",
+            style = MaterialTheme.typography.bodySmall)
     }
+    if (choosingStartup) TvChoiceDialog("On startup & wake", ProfileStartup.entries, startup,
+        { it.label() }, onStartupChange, { choosingStartup = false })
+}
+
+private fun ProfileStartup.label() = when (this) {
+    ProfileStartup.Ask -> "Ask who’s watching"
+    ProfileStartup.ResumeLast -> "Resume last profile"
 }
 
 @Composable

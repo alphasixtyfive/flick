@@ -66,7 +66,16 @@ internal fun HomeAssistantControlsPanel(controls: List<HaControl>, connectionSta
 @Composable
 internal fun HomeAssistantSetupPanel(configuration: HaConfiguration, connectionState: HaConnectionState, busy: Boolean,
     onConfigure: (String, String) -> Unit, onRetry: () -> Unit, onBack: () -> Unit, onChooseControls: () -> Unit,
-    onIntegration: () -> Unit) {
+    onIntegration: () -> Unit,
+    displayPower: HaDisplayPower = if (configuration.displayPowerEntity == null) HaDisplayPower.Disabled else HaDisplayPower.Unknown,
+    onDiscoverDisplayPlayers: (suspend () -> List<HaEntity>)? = null,
+    onSaveDisplayPowerEntity: (suspend (HaControlSpec?) -> Unit)? = null) {
+    var choosingDisplay by remember(configuration.url, configuration.configured) { mutableStateOf(false) }
+    if (choosingDisplay && onDiscoverDisplayPlayers != null && onSaveDisplayPowerEntity != null) {
+        HomeDisplayPowerPicker(configuration.displayPowerEntity, onDiscoverDisplayPlayers, onSaveDisplayPowerEntity,
+            onBack = { choosingDisplay = false })
+        return
+    }
     var url by remember { mutableStateOf(configuration.url) }
     var token by remember { mutableStateOf("") }
     LaunchedEffect(configuration.url, configuration.configured) {
@@ -85,6 +94,17 @@ internal fun HomeAssistantSetupPanel(configuration: HaConfiguration, connectionS
                 else -> "$count controls selected"
             }, icon = Icons.Default.Tune,
                 onClick = { if (!busy) onChooseControls() })
+            if (onDiscoverDisplayPlayers != null && onSaveDisplayPowerEntity != null) {
+                val status = when (displayPower) {
+                    HaDisplayPower.Disabled -> "Not selected"
+                    HaDisplayPower.Unknown -> "State unavailable"
+                    HaDisplayPower.On -> "TV on"
+                    HaDisplayPower.Off -> "TV off"
+                }
+                TvSettingRow("Physical TV", detail = configuration.displayPowerEntity?.let { "${it.name} · $status" }
+                    ?: "Optional · Detect when your TV turns off", icon = Icons.Default.Tv,
+                    onClick = { if (!busy) choosingDisplay = true })
+            }
             TvSettingRow("TV integration", detail = "Optional · Notifications and TV management", icon = Icons.Default.Tv,
                 onClick = onIntegration)
             TvSettingRow("Disconnect", icon = Icons.Default.LinkOff,

@@ -1,6 +1,7 @@
 package app.flick.settings
 
 import app.flick.profiles.Profile
+import app.flick.profiles.ProfileStartup
 import app.flick.weather.WeatherLocation
 import org.json.JSONArray
 import org.json.JSONObject
@@ -10,7 +11,7 @@ object SettingsCodec {
     private val identifier = Regex("[A-Za-z0-9_-]{1,64}")
     private val packageName = Regex("[A-Za-z_][A-Za-z0-9_]*(\\.[A-Za-z_][A-Za-z0-9_]*)+")
     private val presentationFields = setOf("largeText", "compactTiles", "showHomeAssistant", "showSettings", "showWallpaper",
-        "showWeather", "clock24", "showContinue", "navigationSound", "weatherLocation", "favorites", "removedContinue")
+        "showWeather", "clock24", "showContinue", "navigationSound", "weatherLocation", "favorites", "removedContinue", "profileStartup")
 
     /** Apply only the user's changed preferences to the latest state, preserving profile authority. */
     fun mergePresentation(current: LauncherSettings, before: LauncherSettings, requested: LauncherSettings): LauncherSettings {
@@ -61,6 +62,12 @@ object SettingsCodec {
         }
         val active = json.optString("activeProfileId", profiles.first().id)
         require(profiles.any { it.id == active }) { "Unknown active profile" }
+        val profileStartup = if (json.has("profileStartup")) requireNotNull(ProfileStartup.entries.find {
+            it.name == json.getString("profileStartup")
+        }) { "Invalid startup profile behavior" } else null
+        require(profileStartup != ProfileStartup.Ask || profiles.filterNot { it.child }.all { it.pinHash != null }) {
+            "Set a PIN for every adult before asking on startup"
+        }
         val location = json.optJSONObject("weatherLocation")?.let { w ->
             val lat = w.getDouble("latitude")
             val lon = w.getDouble("longitude")
@@ -79,6 +86,7 @@ object SettingsCodec {
             favorites = if (json.has("favorites")) packages(json.optJSONArray("favorites"), 100) else null,
             removedContinue = json.optJSONArray("removedContinue").strings(250).filter { it.length <= 512 }.toSet(),
             profiles = profiles, activeProfileId = active,
+            profileStartup = profileStartup,
         )
     }
 
@@ -93,6 +101,7 @@ object SettingsCodec {
         settings.favorites?.let { put("favorites", JSONArray(it)) }
         put("removedContinue", JSONArray(settings.removedContinue.toList()))
         put("activeProfileId", settings.activeProfileId)
+        settings.profileStartup?.let { put("profileStartup", it.name) }
         put("profiles", JSONArray(settings.profiles.map { p -> JSONObject().put("id", p.id).put("name", p.name)
             .put("child", p.child).put("avatar", p.avatar).put("allowedApps", JSONArray(p.allowedApps))
             .put("pinSalt", p.pinSalt).put("pinHash", p.pinHash).put("wallpaperUri", p.wallpaperUri) }))

@@ -46,6 +46,17 @@ remote's number keys; the fourth digit checks the PIN automatically. Delete remo
 Back returns to the profile chooser. PINs are exactly four digits, including leading zeroes.
 Failed attempts can trigger a temporary lockout.
 
+Profiles → On startup & wake offers Ask who’s watching and Resume last profile. Families with a child
+default to Ask unless an adult explicitly chooses Resume. Ask keeps Flick locked until someone chooses
+a profile: children open directly, and adults enter their PIN even when they were the last person watching.
+Back from the PIN returns to the chooser. Set a PIN for each adult before selecting Ask.
+
+Ask resets when Flick's process starts or Android reports that the box's screen turned off. Returning
+from Plex, another app or a photo picker keeps the current session. Flick does not interrupt another app.
+If the box stays awake while the television switches off, choose the physical television under
+Home Assistant → Physical TV. Losing that signal also locks the current session. Local profile
+selection works offline; while the signal remains unavailable, TV-only power changes cannot be observed.
+
 ## Photos
 
 Open Settings → Wallpapers:
@@ -86,7 +97,7 @@ in Home Assistant for notifications and launcher management. Ordinary light cont
 Pairing uses the existing non-admin TV account and an outbound WebSocket connection.
 No server or port needs to be opened on the TV.
 
-Launcher management is a separate opt-in on the TV. It lets Home Assistant administrators manage
+Launcher management is a separate opt-in and requires an unlocked adult session on the TV. It lets Home Assistant administrators manage
 profiles, parent PINs, app allowlists and online wallpapers, including selecting an adult profile.
 PIN changes use a masked administrator form, not service arguments or entity attributes.
 

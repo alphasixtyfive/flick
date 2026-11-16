@@ -34,7 +34,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     private val weather = WeatherRepository()
     private val homeAssistant = runtime.homeAssistant
     private val wallpapers = runtime.wallpapers
-    private val mutable = MutableStateFlow(HomeState(settings = store.state.value))
+    private val mutable = MutableStateFlow(HomeState(settings = store.state.value, profileSession = runtime.profileSession.state.value))
     val state = mutable.asStateFlow()
     private val profileLock = runtime.profileLock
     private val privilegedJobs = runtime.privilegedJobs
@@ -51,9 +51,15 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     private var active = true
 
     init {
+        viewModelScope.launch { runtime.profileSession.state.collect { session ->
+            mutable.update { it.copy(profileSession = session, profileError = null, profileErrorTarget = null) }
+            updateCatalogue()
+            refreshContinue()
+        } }
         viewModelScope.launch { store.state.collect { settings ->
+            runtime.reconcileProfileSession()
             val previous = mutable.value.settings
-            mutable.update { it.copy(settings = settings) }
+            mutable.update { it.copy(settings = settings, profileSession = runtime.profileSession.state.value) }
             updateCatalogue()
             if (previous.activeProfileId != settings.activeProfileId || previous.showContinue != settings.showContinue ||
                 HomePolicy.canManage(previous) != HomePolicy.canManage(settings)) refreshContinue()
@@ -61,6 +67,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch { store.requiresRecovery.collect { required -> mutable.update { it.copy(recoveryRequired = required) } } }
         viewModelScope.launch { homeAssistant.configuration.collect { value -> mutable.update { it.copy(haConfiguration = value) } } }
         viewModelScope.launch { homeAssistant.connectionState.collect { value -> mutable.update { it.copy(haConnectionState = value) } } }
+        viewModelScope.launch { homeAssistant.displayPower.collect { value -> mutable.update { it.copy(displayPower = value) } } }
         viewModelScope.launch { homeAssistant.controls.collect { value -> mutable.update { it.copy(homeControls = value) } } }
         viewModelScope.launch { runtime.bridge.state.collect { value -> mutable.update { it.copy(bridge = value) } } }
         viewModelScope.launch { runtime.notifications.state.collect { value -> mutable.update { it.copy(notifications = value) } } }
@@ -100,7 +107,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     private fun refreshContinue() {
         continueRead?.cancel()
         val settings = store.state.value
-        if (!active || !state.value.continueAccess || !settings.showContinue || !HomePolicy.canManage(settings)) {
+        if (!active || !state.value.continueAccess || !settings.showContinue || !adult()) {
             allContinue = emptyList()
             updateCatalogue()
             return
@@ -108,7 +115,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         val profileId = settings.activeProfileId
         continueRead = task {
             val items = catalogue.continueItems()
-            if (store.state.value.activeProfileId == profileId && HomePolicy.canManage(store.state.value)) {
+            if (store.state.value.activeProfileId == profileId && adult()) {
                 allContinue = items
                 updateCatalogue()
             }
@@ -118,14 +125,14 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     private fun updateCatalogue() {
         val settings = store.state.value
         mutable.update { it.copy(
-            apps = HomePolicy.visibleApps(settings, allApps),
-            continueItems = if (!HomePolicy.canManage(settings) || !settings.showContinue) emptyList() else
+            apps = if (runtime.profileSession.profile(settings) == null) emptyList() else HomePolicy.visibleApps(settings, allApps),
+            continueItems = if (!adult() || !settings.showContinue) emptyList() else
                 allContinue.filter { row -> HomePolicy.continueKey(row) !in settings.removedContinue },
         ) }
     }
 
     fun launchApp(app: AppEntry) {
-        if (state.value.loading || !HomePolicy.canLaunch(store.state.value, app.packageName)) return
+        if (state.value.loading || !runtime.canLaunch(app.packageName)) return
         runCatching { catalogue.launch(app.packageName) }.onFailure { message("This app could not be opened") }
     }
 
@@ -149,6 +156,9 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                 return@launch
             }
             switchingProfile = true
+            val job = currentCoroutineContext().job
+            runtime.profileSelection = job
+            val generation = runtime.profileSession.state.value.generation
             var cancellation: CancellationException? = null
             val result = try {
                 val pending = privilegedJobs.toList()
@@ -158,10 +168,13 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                     val settings = store.state.value
                     val target = settings.profiles.firstOrNull { it.id == profile.id }
                         ?: error("This profile no longer exists")
-                    if (target.id == settings.activeProfileId) return@withLock
+                    if (runtime.profileSession.profile(settings)?.id == target.id) return@withLock
                     val accepted = withContext(Dispatchers.Default) { profiles.verify(target, pin) }
                     check(accepted) { "PIN not accepted" }
+                    currentCoroutineContext().ensureActive()
+                    check(generation == runtime.profileSession.state.value.generation) { "Choose a profile again" }
                     store.save(settings.copy(activeProfileId = target.id))
+                    check(runtime.profileSession.authorize(store.state.value, target, generation)) { "Choose a profile again" }
                 }
                 mutable.update { it.copy(profileError = null, profileErrorTarget = null) }
                 Result.success(Unit)
@@ -169,13 +182,23 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                 cancellation = cancelled
                 Result.failure(IllegalStateException("Profile change was cancelled. Try again."))
             } catch (error: Exception) {
-                mutable.update { it.copy(profileError = error.message?.take(160) ?: "This profile could not be opened",
-                    profileErrorTarget = profile.id) }
+                if (generation == runtime.profileSession.state.value.generation) mutable.update {
+                    it.copy(profileError = error.message?.take(160) ?: "This profile could not be opened", profileErrorTarget = profile.id)
+                }
                 Result.failure(error)
-            } finally { switchingProfile = false }
+            } finally {
+                if (runtime.profileSelection === job) runtime.profileSelection = null
+                switchingProfile = false
+                runtime.reconcileProfileSession()
+            }
             onComplete(result)
             cancellation?.let { throw it }
         }
+    }
+
+    fun cancelProfileSelection() {
+        runtime.profileSession.cancelSelection()
+        runtime.profileSelection?.cancel()
     }
 
     fun searchPlaces(query: String) {
@@ -199,7 +222,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    fun rotateWallpaper() { wallpapers.next() }
+    fun rotateWallpaper() { if (runtime.profileSession.profile(store.state.value) != null) wallpapers.next() }
     fun saveWallpaperSettings(before: WallpaperSettings, settings: WallpaperSettings) {
         privilegedTask { wallpapers.saveChanges(before, settings) }
     }
@@ -209,6 +232,8 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         mutable.update { it.copy(haDiscoveryLoaded = false, haEntities = emptyList()) }
         homeAssistant.configure(url, token)
     } }
+    suspend fun discoverDisplayPlayers() = runtime.withAdultSession { homeAssistant.discoverDisplayPlayers() }
+    suspend fun saveDisplayPowerEntity(value: HaControlSpec?) = runtime.withAdultSession { homeAssistant.saveDisplayPowerEntity(value) }
     fun retryHomeAssistant() { haTask { homeAssistant.retry() } }
     fun pairHomeAssistant() { privilegedTask { runtime.bridge.beginPairing(); runtime.notifications.enableBackground(true) } }
     fun forgetIntegration() { privilegedTask {
@@ -300,17 +325,39 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     }
 
     private fun profileEdit(onComplete: (Result<Unit>) -> Unit, edit: suspend (LauncherSettings) -> LauncherSettings) {
-        task {
+        val job = privilegedTask {
+            val owner = currentCoroutineContext().job
+            val authorizedId = runtime.profileSession.profile(store.state.value)?.id
+            val generation = runtime.profileSession.state.value.generation
+            switchingProfile = true
             val result = try {
+                privilegedJobs.toList().filterNot { it === owner }.forEach { it.cancelAndJoin() }
                 profileLock.withLock {
-                    check(adult() && !switchingProfile) { "Choose an adult profile first" }
-                    store.save(edit(store.state.value))
+                    check(adult()) { "Choose an adult profile first" }
+                    val updated = edit(store.state.value)
+                    currentCoroutineContext().ensureActive()
+                    check(adult() && generation == runtime.profileSession.state.value.generation) { "Choose an adult profile first" }
+                    store.save(updated)
+                    // An already-authorized adult can update their own PIN; a fallback adult needs a new unlock.
+                    if (updated.activeProfileId == authorizedId) {
+                        val selected = updated.profiles.first { it.id == authorizedId }
+                        check(runtime.profileSession.authorize(store.state.value, selected, generation)) { "Choose a profile again" }
+                    }
                 }
                 Result.success(Unit)
-            } catch (cancelled: CancellationException) { throw cancelled }
+            } catch (cancelled: CancellationException) {
+                onComplete(Result.failure(IllegalStateException("Saving was cancelled. Try again.")))
+                throw cancelled
+            }
             catch (error: Exception) { Result.failure(error) }
+            finally {
+                privilegedJobs.remove(owner)
+                switchingProfile = false
+                runtime.reconcileProfileSession()
+            }
             onComplete(result)
         }
+        if (job == null) onComplete(Result.failure(IllegalStateException("Choose an adult profile first")))
     }
 
     suspend fun importSettings(settings: LauncherSettings, wallpaper: WallpaperSettings?,
@@ -334,16 +381,16 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         } finally { privilegedJobs.remove(job) }
     }
 
-    private fun editSettings(transform: (LauncherSettings) -> LauncherSettings) = task {
+    private fun editSettings(transform: (LauncherSettings) -> LauncherSettings) = privilegedTask {
         profileLock.withLock {
             store.update { current ->
-                check(HomePolicy.canManage(current)) { "Choose an adult profile first" }
+                check(adult()) { "Choose an adult profile first" }
                 transform(current)
             }
         }
     }
 
-    private fun adult() = HomePolicy.canManage(store.state.value)
+    private fun adult() = runtime.canManage()
     private fun task(start: CoroutineStart = CoroutineStart.DEFAULT, block: suspend () -> Unit): Job = viewModelScope.launch(start = start) {
         try { block() } catch (cancelled: CancellationException) { throw cancelled }
         catch (error: Exception) { message(error.message?.take(160) ?: "This action could not be completed") }

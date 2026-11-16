@@ -7,7 +7,9 @@ import app.flick.homeassistant.HaControl
 import app.flick.homeassistant.HaConnectionState
 import app.flick.homeassistant.HaControlSpec
 import app.flick.homeassistant.HaEntity
+import app.flick.homeassistant.HaDisplayPower
 import app.flick.profiles.Profile
+import app.flick.profiles.ProfileSessionState
 import app.flick.settings.LauncherSettings
 import app.flick.wallpaper.WallpaperSettings
 import app.flick.weather.PlaceResult
@@ -18,6 +20,7 @@ import app.flick.notifications.NotificationState
 /** Immutable screen input. Native repositories remain responsible for authorization and I/O. */
 data class HomeState(
     val settings: LauncherSettings = LauncherSettings(),
+    val profileSession: ProfileSessionState = ProfileSessionState(),
     val apps: List<AppEntry> = emptyList(),
     val continueItems: List<ContinueItem> = emptyList(),
     val weather: WeatherReading? = null,
@@ -32,6 +35,7 @@ data class HomeState(
     val bridge: BridgeState = BridgeState(),
     val notifications: NotificationState = NotificationState(),
     val haConnectionState: HaConnectionState = HaConnectionState.Unknown,
+    val displayPower: HaDisplayPower = HaDisplayPower.Disabled,
     val haDiscoveryLoaded: Boolean = false,
     val recoveryRequired: Boolean = false,
     val loading: Boolean = true,
@@ -53,6 +57,7 @@ data class HomeActions(
     val uninstallApp: (AppEntry) -> Unit,
     val removeContinue: (ContinueItem) -> Unit,
     val chooseProfile: (Profile, String, (Result<Unit>) -> Unit) -> Unit,
+    val cancelProfileSelection: () -> Unit,
     val saveProfile: (Profile, String, (Result<Unit>) -> Unit) -> Unit,
     val deleteProfile: (Profile, (Result<Unit>) -> Unit) -> Unit,
     val chooseProfilePhoto: (Profile) -> Unit,
@@ -67,6 +72,8 @@ data class HomeActions(
     val setHomePower: (HaControl, Boolean) -> Unit,
     val runHomeScene: (HaControl) -> Unit,
     val configureHomeAssistant: (String, String) -> Unit,
+    val discoverDisplayPlayers: suspend () -> List<HaEntity>,
+    val saveDisplayPowerEntity: suspend (HaControlSpec?) -> Unit,
     val discoverHomeEntities: () -> Unit,
     val retryHomeAssistant: () -> Unit,
     val pairHomeAssistant: () -> Unit,

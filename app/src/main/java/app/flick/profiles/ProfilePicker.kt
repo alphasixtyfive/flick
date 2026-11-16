@@ -48,6 +48,7 @@ internal fun ProfilePicker(
     activeProfileId: String,
     onChoose: (Profile) -> Unit,
     onDismiss: () -> Unit,
+    showActive: Boolean = true,
 ) {
     val scroll = rememberLazyListState()
     val activeFocus = remember { FocusRequester() }
@@ -69,8 +70,9 @@ internal fun ProfilePicker(
             items(profiles.chunked(3), key = { row -> row.joinToString { it.id } }) { row ->
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)) {
                     row.forEach { profile ->
-                        val active = profile.id == activeProfileId
-                        val focus = if (active) Modifier.focusRequester(activeFocus) else Modifier
+                        val initial = profile.id == activeProfileId
+                        val active = showActive && initial
+                        val focus = if (initial) Modifier.focusRequester(activeFocus) else Modifier
                         TvFocusSurface(
                             onClick = { onChoose(profile) },
                             shape = RoundedCornerShape(app.flick.ui.theme.TvLayout.RowRadius),
@@ -95,7 +97,7 @@ internal fun ProfilePicker(
                                 }
                                 Text(profile.name, style = MaterialTheme.typography.bodyMedium, maxLines = 1,
                                     overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center)
-                                Text(if (active) "Active" else if (profile.child) "Child" else "",
+                                Text(if (active) "Active" else if (profile.child) "Child" else if (!showActive) "Adult" else "",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = LocalContentColor.current.copy(alpha = .74f), maxLines = 1)
                             }

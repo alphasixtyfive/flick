@@ -80,7 +80,9 @@ internal fun HomeDialogs(panel: HomePanel, state: HomeState, actions: HomeAction
                     })
                 }
             }, onDismiss = onClose)
-        is HomePanel.Pin -> ProfilePin(panel.profile, state.profileError.takeIf { state.profileErrorTarget == panel.profile.id }, onBack = { onPanel(HomePanel.Profiles) },
+        is HomePanel.Pin -> ProfilePin(panel.profile, state.profileError.takeIf { state.profileErrorTarget == panel.profile.id }, onBack = {
+            actions.cancelProfileSelection(); onPanel(HomePanel.Profiles)
+        },
             onSuccess = onClose, onConfirm = { pin, complete -> actions.chooseProfile(panel.profile, pin, complete) })
         else -> Unit
     }

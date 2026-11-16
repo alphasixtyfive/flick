@@ -39,18 +39,34 @@ internal class HaCredentialStore(context: Context) {
         })
     }.getOrDefault(emptyList())
 
-    fun save(credentials: HaCredentials, controls: List<HaControlSpec>) {
+    fun displayPowerEntity(): HaControlSpec? = runCatching {
+        val value = JSONObject(preferences.getString("display_power_entity", null) ?: return null)
+        HaDisplayPowerPolicy.selection(HaControlSpec(value.getString("entityId"), value.optString("name")))
+    }.getOrNull()
+
+    fun save(credentials: HaCredentials, controls: List<HaControlSpec>, displayPowerEntity: HaControlSpec? = null) {
         val encrypted = HaTokenCipher.encrypt(key(), credentials.url, credentials.token)
         preferences.commitOrRestore("Home Assistant sign-in could not be saved") {
             putString("url", credentials.url)
             putString("token_iv", Base64.encodeToString(encrypted.iv, Base64.NO_WRAP))
             putString("token_ciphertext", Base64.encodeToString(encrypted.bytes, Base64.NO_WRAP))
             putString("controls", encodeControls(controls))
+            putString("display_power_entity", encodeDisplayPowerEntity(displayPowerEntity))
         }
     }
 
     fun saveControls(values: List<HaControlSpec>) {
         preferences.commitOrRestore("The controls could not be saved") { putString("controls", encodeControls(values)) }
+    }
+
+    fun saveDisplayPowerEntity(value: HaControlSpec?) {
+        preferences.commitOrRestore("The physical TV selection could not be saved") {
+            putString("display_power_entity", encodeDisplayPowerEntity(value))
+        }
+    }
+
+    private fun encodeDisplayPowerEntity(value: HaControlSpec?) = value?.let {
+        JSONObject().put("entityId", it.entityId).put("name", it.name).toString()
     }
 
     fun clear() { preferences.commitOrRestore("Home Assistant sign-in could not be removed") { clear() } }

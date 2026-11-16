@@ -40,6 +40,7 @@ import app.flick.apps.AppEntry
 import app.flick.apps.ContinueItem
 import app.flick.profiles.Profile
 import app.flick.profiles.ProfileAvatar
+import app.flick.profiles.ProfileSessionScreen
 import app.flick.settings.NativeSettingsPanel
 import app.flick.ui.components.TvAction
 import app.flick.ui.components.TvFocusSurface
@@ -74,6 +75,10 @@ internal sealed interface HomePanel {
 fun FlickScreen(state: HomeState, actions: HomeActions) {
     if (state.recoveryRequired) {
         RecoveryScreen(actions.openRecoverySettings)
+        return
+    }
+    if (state.profileSession.authorizedProfileId == null || state.profileSession.authorizedProfileId != state.settings.activeProfileId) {
+        ProfileSessionScreen(state, actions)
         return
     }
     val profile = HomePolicy.profile(state.settings)
@@ -186,6 +191,7 @@ fun FlickScreen(state: HomeState, actions: HomeActions) {
     }
     LaunchedEffect(state.homeRequestVersion) {
         if (state.homeRequestVersion > 0) {
+            if (panel is HomePanel.Pin) actions.cancelProfileSelection()
             closePanel()
             moving = null
         }

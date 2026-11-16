@@ -7,8 +7,12 @@ data class HaEntity(val entityId: String, val name: String, val domain: String)
 data class HaConfiguration(
     val url: String = "",
     val configured: Boolean = false,
-    val controls: List<HaControlSpec> = emptyList()
+    val controls: List<HaControlSpec> = emptyList(),
+    val displayPowerEntity: HaControlSpec? = null,
 )
+
+internal fun HaConfiguration.observedEntityIds(): Set<String> =
+    controls.mapTo(mutableSetOf()) { it.entityId }.apply { displayPowerEntity?.let { add(it.entityId) } }
 
 /** State always comes from Home Assistant. Pending describes a request, never an invented value. */
 data class HaControl(

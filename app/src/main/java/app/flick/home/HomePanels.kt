@@ -2,6 +2,7 @@ package app.flick.home
 
 import androidx.compose.runtime.Composable
 import app.flick.profiles.Profile
+import app.flick.profiles.ProfileSession
 import app.flick.weather.WeatherLocationPanel
 import app.flick.wallpaper.WallpaperSettingsPanel
 import app.flick.profiles.ProfileManagementPanel
@@ -18,7 +19,8 @@ internal fun HomePanels(panel: HomePanel?, state: HomeState, actions: HomeAction
         HomePanel.ManageProfiles -> ProfileManagementPanel(state.settings.profiles, state.settings.activeProfileId,
             onEdit = { onPanel(HomePanel.EditProfile(it)) },
             onAdd = { onPanel(HomePanel.EditProfile(Profile(java.util.UUID.randomUUID().toString(), ""))) },
-            onBack = { onPanel(HomePanel.Settings) })
+            onBack = { onPanel(HomePanel.Settings) }, startup = ProfileSession.startup(state.settings),
+            onStartupChange = { actions.updateSettings(state.settings, state.settings.copy(profileStartup = it)) })
         is HomePanel.EditProfile -> ProfileEditor(panel.profile, state.settings.profiles, state.apps,
             actions.saveProfile, actions.deleteProfile, actions.chooseProfilePhoto, actions.removeProfilePhoto,
             actions.chooseProfileWallpaper, actions.removeProfileWallpaper,
@@ -34,7 +36,8 @@ internal fun HomePanels(panel: HomePanel?, state: HomeState, actions: HomeAction
             actions.chooseWallpaperFolder, actions.chooseWallpaperPhotos, onBack = { onPanel(HomePanel.Settings) })
         HomePanel.HomeAssistantSetup -> HomeAssistantSetupPanel(state.haConfiguration, state.haConnectionState, state.haBusy, actions.configureHomeAssistant, actions.retryHomeAssistant, onBack = { onPanel(HomePanel.Settings) },
             onChooseControls = { actions.discoverHomeEntities(); onPanel(HomePanel.HomeEntities()) },
-            onIntegration = { onPanel(HomePanel.Integration) })
+            onIntegration = { onPanel(HomePanel.Integration) }, displayPower = state.displayPower,
+            onDiscoverDisplayPlayers = actions.discoverDisplayPlayers, onSaveDisplayPowerEntity = actions.saveDisplayPowerEntity)
         HomePanel.Integration -> IntegrationPanel(state, actions, onBack = { onPanel(HomePanel.HomeAssistantSetup) })
         is HomePanel.HomeEntities -> HomeEntityPicker(state.haEntities, state.haConfiguration.controls, state.haBusy,
             state.haDiscoveryLoaded, actions.saveHomeControls, actions.showMessage,

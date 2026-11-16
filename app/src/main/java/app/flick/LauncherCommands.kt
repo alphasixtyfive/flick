@@ -12,6 +12,8 @@ import app.flick.profiles.ProfileSecurity
 import app.flick.wallpaper.WallpaperPhoto
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.job
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
@@ -44,7 +46,7 @@ internal class LauncherCommands(private val runtime: FlickRuntime) {
             return JSONObject()
         }
         check(bridge.allowManagement) { "Allow launcher management in Flick settings first" }
-        return when (command.type) {
+        return runtime.withAdultSession { when (command.type) {
             BridgeCommandType.ListApps -> JSONObject().put("apps", JSONArray(runtime.catalogue.apps().map {
                 JSONObject().put("package_name", it.packageName).put("name", it.name)
             }))
@@ -68,15 +70,17 @@ internal class LauncherCommands(private val runtime: FlickRuntime) {
                 JSONObject()
             }
             else -> error("Unsupported launcher operation")
-        }
+        } }
     }
 
     private suspend fun editProfile(command: BridgeCommand): JSONObject {
         // Retire adult-screen operations before a remotely selected profile changes their authority.
         check(!runtime.switchingProfile) { "A profile change is already in progress" }
         runtime.switchingProfile = true
+        val generation = runtime.profileSession.state.value.generation
         try {
-            runtime.privilegedJobs.toList().forEach { it.cancelAndJoin() }
+            val owner = currentCoroutineContext().job
+            runtime.privilegedJobs.toList().filterNot { it === owner }.forEach { it.cancelAndJoin() }
             runtime.profileLock.withLock {
                 val settings = runtime.store.state.value
                 val data = command.data
@@ -109,13 +113,15 @@ internal class LauncherCommands(private val runtime: FlickRuntime) {
                     }
                 }
                 runtime.store.save(updated)
+                val selected = updated.profiles.first { it.id == updated.activeProfileId }
+                check(runtime.profileSession.authorize(runtime.store.state.value, selected, generation)) { "Choose an adult profile again" }
             }
-        } finally { runtime.switchingProfile = false }
+        } finally { runtime.switchingProfile = false; runtime.reconcileProfileSession() }
         return status()
     }
 
     private suspend fun showNotice(data: JSONObject) {
-        val actions = if (HomePolicy.canManage(runtime.store.state.value)) data.optJSONArray("actions")?.let { array ->
+        val actions = if (runtime.canManage()) data.optJSONArray("actions")?.let { array ->
             (0 until array.length()).map { index -> array.getJSONObject(index).let { NoticeAction(it.getString("id"), it.getString("label")) } }
         }.orEmpty() else emptyList()
         val persistent = data.optBoolean("persistent", false)
