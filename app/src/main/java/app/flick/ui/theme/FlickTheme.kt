@@ -21,7 +21,6 @@ import app.flick.R
 
 @OptIn(ExperimentalTextApi::class)
 private val FlickFont = FontFamily(
-    Font(R.font.google_sans_flex_tv, weight = FontWeight.Light, variationSettings = FontVariation.Settings(FontVariation.weight(300))),
     Font(R.font.google_sans_flex_tv, weight = FontWeight.Normal, variationSettings = FontVariation.Settings(FontVariation.weight(400))),
     Font(R.font.google_sans_flex_tv, weight = FontWeight.Medium, variationSettings = FontVariation.Settings(FontVariation.weight(500))),
     Font(R.font.google_sans_flex_tv, weight = FontWeight.SemiBold, variationSettings = FontVariation.Settings(FontVariation.weight(600))),
