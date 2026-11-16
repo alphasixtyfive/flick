@@ -7,13 +7,14 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import app.flick.home.HomeActions
 import app.flick.home.HomeState
+import app.flick.ui.components.navigationFeedback
 
 /** No launcher content or controls exist behind the startup picker. Back returns here from the PIN. */
 @Composable
 internal fun ProfileSessionScreen(state: HomeState, actions: HomeActions) {
     var selected by remember(state.profileSession.generation) { mutableStateOf<Profile?>(null) }
     BackHandler { actions.cancelProfileSelection(); selected = null }
-    Box(Modifier.fillMaxSize()) {
+    Box(Modifier.fillMaxSize().navigationFeedback()) {
         val target = selected?.let { chosen -> state.settings.profiles.find { it.id == chosen.id } }
         if (target == null) ProfileChooser(state.settings.profiles, state.settings.activeProfileId,
             showActive = false, onChoose = { profile ->

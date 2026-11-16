@@ -102,8 +102,9 @@ fun FlickScreen(state: HomeState, actions: HomeActions) {
     var hadPanel by remember { mutableStateOf(false) }
     var initialHomeFocusPending by remember { mutableStateOf(true) }
     var profilePlaced by remember { mutableStateOf(false) }
-    // A native dialog blocks input in its own window and preserves the caller's focus.
-    val backgroundEnabled = panel?.isDialog() == true ||
+    // Dialog windows own their focus; profile overlays cover Home and disable its controls.
+    val profileOverlay = panel == HomePanel.Profiles || panel is HomePanel.Pin
+    val backgroundEnabled = (panel?.isOverlay() == true && !profileOverlay) ||
         (panel == null && !panelVisibility.currentState && !panelVisibility.targetState)
     @OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
     fun homeFocus(id: String, leftBoundary: Boolean = false, rightBoundary: Boolean = false): Modifier = Modifier
@@ -167,10 +168,10 @@ fun FlickScreen(state: HomeState, actions: HomeActions) {
 
     LaunchedEffect(panel) {
         if (panel != null) {
-            if (panel?.isDialog() == false) retainedPanel = panel
+            if (panel?.isOverlay() == false) retainedPanel = panel
             hadPanel = true
         }
-        panelVisibility.targetState = panel != null && panel?.isDialog() == false
+        panelVisibility.targetState = panel != null && panel?.isOverlay() == false
     }
     LaunchedEffect(panel, windowFocused, panelVisibility.isIdle, panelVisibility.currentState, panelVisibility.targetState) {
         if (hadPanel && windowFocused && panelVisibility.isIdle && !panelVisibility.currentState && !panelVisibility.targetState && panel == null) {
@@ -216,6 +217,7 @@ fun FlickScreen(state: HomeState, actions: HomeActions) {
     Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xff24374a), Color(0xff101820)))).navigationFeedback()
         .onPreviewKeyEvent { event ->
             if (event.nativeKeyEvent.keyCode == android.view.KeyEvent.KEYCODE_SETTINGS) {
+                if (panel?.isOverlay() == true) return@onPreviewKeyEvent true
                 if (event.type == KeyEventType.KeyDown && !child) openSettings()
                 return@onPreviewKeyEvent true
             }
@@ -334,8 +336,8 @@ fun FlickScreen(state: HomeState, actions: HomeActions) {
 
         AnimatedVisibility(visibleState = panelVisibility, enter = slideInHorizontally(tween(180)) { it },
             exit = slideOutHorizontally(tween(160)) { it }, modifier = Modifier.align(Alignment.CenterEnd)
-                .onPreviewKeyEvent { panel == null || panel?.isDialog() == true }) {
-            val displayed = panel?.takeUnless { it.isDialog() } ?: retainedPanel
+                .onPreviewKeyEvent { panel == null || panel?.isOverlay() == true }) {
+            val displayed = panel?.takeUnless { it.isOverlay() } ?: retainedPanel
             if (displayed == HomePanel.Settings) NativeSettingsPanel(state, actions, page = settingsPage,
                 onPageChange = { if (panel == displayed) settingsPage = it }, onClose = { if (panel == displayed) closePanel() },
                 onWeather = { if (panel == displayed) openPanel(HomePanel.Weather) },
@@ -345,11 +347,11 @@ fun FlickScreen(state: HomeState, actions: HomeActions) {
             else HomePanels(displayed, state, actions, onClose = { if (panel == displayed) closePanel() },
                 onPanel = { if (panel == displayed) openPanel(it) })
         }
-        panel?.takeIf { it.isDialog() }?.let { dialog ->
-            HomeDialogs(dialog, state, actions, allAppsScroll,
-                isCurrent = { panel === dialog }, onClose = { if (panel === dialog) closePanel() },
+        panel?.takeIf { it.isOverlay() }?.let { overlay ->
+            HomeOverlays(overlay, state, actions, allAppsScroll,
+                isCurrent = { panel === overlay }, onClose = { if (panel === overlay) closePanel() },
                 onAppOptionsBack = {
-                    val menu = dialog as? HomePanel.AppOptions
+                    val menu = overlay as? HomePanel.AppOptions
                     if (menu != null) {
                         val destination = appOptionsBackDestination(panel, menu)
                         if (destination !== panel) {
@@ -358,18 +360,18 @@ fun FlickScreen(state: HomeState, actions: HomeActions) {
                     }
                 },
                 onPanel = { destination ->
-                    if (panel === dialog) openPanel(destination)
+                    if (panel === overlay) openPanel(destination)
                 },
                 onMove = move@{ app ->
-                    if (panel !== dialog) return@move
+                    if (panel !== overlay) return@move
                     returnFocus = "app:" + app.packageName
                     moving = app.packageName
                     moveOrder = favorites.filter(byPackage::containsKey)
                     closePanel()
                 },
                 onRemoveContinue = remove@{
-                    if (panel !== dialog) return@remove
-                    val item = (dialog as? HomePanel.ContinueOptions)?.item
+                    if (panel !== overlay) return@remove
+                    val item = (overlay as? HomePanel.ContinueOptions)?.item
                     if (item != null) {
                         val index = state.continueItems.indexOfFirst { it.id == item.id }
                         val neighbor = state.continueItems.getOrNull(index + 1) ?: state.continueItems.getOrNull(index - 1)

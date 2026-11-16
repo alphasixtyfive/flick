@@ -29,15 +29,16 @@ import coil.compose.AsyncImage
 import app.flick.apps.AppEntry
 import app.flick.profiles.ProfilePicker
 import app.flick.profiles.ProfilePin
+import app.flick.profiles.ProfilePickerBackdrop
 import app.flick.ui.components.TvDialog
 import app.flick.ui.components.TvSettingRow
 import app.flick.ui.theme.TvLayout
 
-internal fun HomePanel.isDialog() = this is HomePanel.AppOptions || this is HomePanel.ContinueOptions ||
+internal fun HomePanel.isOverlay() = this is HomePanel.AppOptions || this is HomePanel.ContinueOptions ||
     this == HomePanel.Profiles || this is HomePanel.Pin || this == HomePanel.AllApps
 
 @Composable
-internal fun HomeDialogs(panel: HomePanel, state: HomeState, actions: HomeActions, allAppsScroll: LazyGridState,
+internal fun HomeOverlays(panel: HomePanel, state: HomeState, actions: HomeActions, allAppsScroll: LazyGridState,
     isCurrent: () -> Boolean, onClose: () -> Unit, onAppOptionsBack: () -> Unit, onPanel: (HomePanel) -> Unit,
     onMove: (AppEntry) -> Unit, onRemoveContinue: () -> Unit,
     focusedApp: String? = null, onFocusedApp: (String) -> Unit = {}) {
@@ -80,10 +81,12 @@ internal fun HomeDialogs(panel: HomePanel, state: HomeState, actions: HomeAction
                     })
                 }
             }, onDismiss = onClose)
-        is HomePanel.Pin -> ProfilePin(panel.profile, state.profileError.takeIf { state.profileErrorTarget == panel.profile.id }, onBack = {
-            actions.cancelProfileSelection(); onPanel(HomePanel.Profiles)
-        },
-            onSuccess = onClose, onConfirm = { pin, complete -> actions.chooseProfile(panel.profile, pin, complete) })
+        is HomePanel.Pin -> Box(Modifier.fillMaxSize()) {
+            ProfilePickerBackdrop()
+            ProfilePin(panel.profile, state.profileError.takeIf { state.profileErrorTarget == panel.profile.id }, onBack = {
+                actions.cancelProfileSelection(); onPanel(HomePanel.Profiles)
+            }, onSuccess = onClose, onConfirm = { pin, complete -> actions.chooseProfile(panel.profile, pin, complete) })
+        }
         else -> Unit
     }
 }

@@ -1,7 +1,9 @@
 package app.flick.profiles
 
 import androidx.compose.foundation.background
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.focusGroup
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -38,6 +40,7 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.layout.onPlaced
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
@@ -46,13 +49,10 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import app.flick.ui.components.TvFocusSurface
-import app.flick.ui.components.navigationFeedback
 import app.flick.ui.theme.FlickColors
 
 @Composable
@@ -63,21 +63,21 @@ internal fun ProfilePicker(
     onDismiss: () -> Unit,
     showActive: Boolean = true,
 ) {
-    Dialog(onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
-        ProfileChooser(profiles, activeProfileId, onChoose, showActive)
-    }
+    BackHandler(onBack = onDismiss)
+    ProfileChooser(profiles, activeProfileId, onChoose, showActive)
 }
 
 @Composable
 internal fun ProfilePickerBackdrop() {
-    Box(Modifier.fillMaxSize().background(Brush.linearGradient(listOf(Color(0xFF1B2735), FlickColors.Background, Color(0xFF0C1119)))))
+    Box(Modifier.fillMaxSize()
+        .background(Brush.linearGradient(listOf(Color(0xFF1B2735), FlickColors.Background, Color(0xFF0C1119))))
+        .pointerInput(Unit) { detectTapGestures(onTap = {}) })
 }
 
 /** Startup and manual switching share one neutral surface; personal photos appear after selection. */
 @Composable
 internal fun ProfileChooser(profiles: List<Profile>, activeProfileId: String, onChoose: (Profile) -> Unit, showActive: Boolean) {
-    Box(Modifier.fillMaxSize().navigationFeedback()) {
+    Box(Modifier.fillMaxSize()) {
         ProfilePickerBackdrop()
         Column(Modifier.align(Alignment.Center).widthIn(max = 600.dp).fillMaxWidth().padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(28.dp)) {
@@ -136,14 +136,16 @@ private fun ProfileAvatarChoice(profile: Profile, active: Boolean, modifier: Mod
     val pinProtected = !profile.child && profile.pinHash != null
     Column(Modifier.width(112.dp).height(128.dp), horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        TvFocusSurface(onClick = onChoose, shape = CircleShape, containerColor = Color.Transparent,
-            modifier = modifier.size(84.dp).semantics {
-                contentDescription = profile.name
-                selected = active
-                val role = if (profile.child) "Child profile" else "Adult profile"
-                stateDescription = (if (active) "Active profile, " else "") + role + if (pinProtected) ", PIN protected" else ""
-            }) {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { ProfileAvatar(profile, 72.dp) }
+        Box(Modifier.size(84.dp)) {
+            TvFocusSurface(onClick = onChoose, shape = CircleShape, containerColor = Color.Transparent,
+                modifier = modifier.fillMaxSize().semantics {
+                    contentDescription = profile.name
+                    selected = active
+                    val role = if (profile.child) "Child profile" else "Adult profile"
+                    stateDescription = (if (active) "Active profile, " else "") + role + if (pinProtected) ", PIN protected" else ""
+                }) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { ProfileAvatar(profile, 72.dp) }
+            }
             if (active) Box(Modifier.align(Alignment.BottomEnd).size(20.dp).background(FlickColors.Foreground, CircleShape),
                 contentAlignment = Alignment.Center) {
                 Icon(Icons.Default.Check, contentDescription = null, tint = FlickColors.FocusForeground, modifier = Modifier.size(14.dp))
