@@ -33,6 +33,10 @@ Location search and conditions use Open-Meteo.
 Open Settings → Profiles to add or edit people. Select the photo row in an existing profile to choose
 an avatar through Android's document picker. Select a profile from the home-screen avatar to switch users.
 
+Select **Profile wallpaper** while editing an existing profile to choose its own picture. That picture
+stays fixed while the profile is active; other profiles keep their own picture or the shared slideshow.
+Select **Use shared wallpapers** to remove the override. Only adults can change profile wallpapers.
+
 Set a parent PIN on every adult before adding a child profile, then choose the child's allowed apps.
 These limits apply to Flick's app list; they do not create separate Android users or restrict content
 inside another app. Set up child accounts and content limits in Plex, Jellyfin and other media apps too.

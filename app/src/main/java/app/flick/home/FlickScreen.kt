@@ -78,6 +78,7 @@ fun FlickScreen(state: HomeState, actions: HomeActions) {
     }
     val profile = HomePolicy.profile(state.settings)
     val child = profile.child
+    val showNextWallpaper = state.settings.showWallpaper && profile.wallpaperUri == null
     val apps = HomePolicy.visibleApps(state.settings, state.apps)
     val byPackage = apps.associateBy { it.packageName }
     val favorites = if (child) apps.map { it.packageName } else state.settings.favorites ?: apps.take(5).map { it.packageName }
@@ -111,7 +112,7 @@ fun FlickScreen(state: HomeState, actions: HomeActions) {
     val movePress = remember { RemotePress() }
     val displayedApps = (if (moving != null) moveOrder else favorites).mapNotNull(byPackage::get)
     val lastTopAction = when {
-        state.settings.showWallpaper -> "wallpaper"
+        showNextWallpaper -> "wallpaper"
         !child && state.settings.showSettings -> "settings"
         !child && state.settings.showHomeAssistant && state.haConfiguration.configured -> "home-assistant"
         else -> "profile"
@@ -223,11 +224,13 @@ fun FlickScreen(state: HomeState, actions: HomeActions) {
                 true
             } else false
         }) {
-        WallpaperBackground(
-            photo = state.wallpaperUri?.let { WallpaperPhoto(it) },
-            dimAmount = state.wallpaperSettings.dimAmount,
-            modifier = Modifier.fillMaxSize(),
-        )
+        key(profile.id) {
+            WallpaperBackground(
+                photo = state.displayedWallpaperUri?.let { WallpaperPhoto(it) },
+                dimAmount = state.wallpaperSettings.dimAmount,
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
         Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(
             Color.Black.copy(alpha = .48f), Color.Transparent, Color.Black.copy(alpha = .86f),
         ))))
@@ -260,7 +263,7 @@ fun FlickScreen(state: HomeState, actions: HomeActions) {
                         modifier = homeFocus("settings", rightBoundary = lastTopAction == "settings"),
                         onClick = { openSettings() },
                     )
-                    if (state.settings.showWallpaper) TvAction(
+                    if (showNextWallpaper) TvAction(
                         label = "Next wallpaper", icon = Icons.Default.PhotoLibrary,
                         modifier = homeFocus("wallpaper", rightBoundary = true), onClick = actions.rotateWallpaper,
                     )

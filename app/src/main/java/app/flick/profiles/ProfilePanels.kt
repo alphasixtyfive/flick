@@ -41,7 +41,8 @@ internal fun ProfileManagementPanel(profiles: List<Profile>, activeProfileId: St
 internal fun ProfileEditor(profile: Profile, profiles: List<Profile>, apps: List<AppEntry>,
     onSave: (Profile, String, (Result<Unit>) -> Unit) -> Unit,
     onDelete: (Profile, (Result<Unit>) -> Unit) -> Unit,
-    onChoosePhoto: (Profile) -> Unit, onRemovePhoto: (Profile) -> Unit, onBack: () -> Unit) {
+    onChoosePhoto: (Profile) -> Unit, onRemovePhoto: (Profile) -> Unit,
+    onChooseWallpaper: (Profile) -> Unit, onRemoveWallpaper: (Profile) -> Unit, onBack: () -> Unit) {
     var name by remember(profile.id) { mutableStateOf(profile.name) }
     var child by remember(profile.id) { mutableStateOf(profile.child) }
     var allowed by remember(profile.id) { mutableStateOf(profile.allowedApps.toSet()) }
@@ -78,6 +79,11 @@ internal fun ProfileEditor(profile: Profile, profiles: List<Profile>, apps: List
                 onClick = { if (pending == null) onChoosePhoto(currentProfile) })
             if (currentProfile.avatar != null) TvSettingRow("Remove photo", icon = Icons.Default.ImageNotSupported,
                 onClick = { if (pending == null) onRemovePhoto(currentProfile) })
+            TvSettingRow("Profile wallpaper", icon = Icons.Default.Wallpaper,
+                detail = if (currentProfile.wallpaperUri == null) "Using shared wallpapers" else "Custom wallpaper",
+                onClick = { if (pending == null) onChooseWallpaper(currentProfile) })
+            if (currentProfile.wallpaperUri != null) TvSettingRow("Use shared wallpapers", icon = Icons.Default.PhotoLibrary,
+                onClick = { if (pending == null) onRemoveWallpaper(currentProfile) })
         } else Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             ProfileAvatar(profile.copy(name = name.ifBlank { "?" }), size = 40.dp)

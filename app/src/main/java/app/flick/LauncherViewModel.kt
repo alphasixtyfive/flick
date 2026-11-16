@@ -271,12 +271,16 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     fun saveProfilePhoto(profile: Profile, uri: String?) {
         editSettings { settings -> settings.copy(profiles = settings.profiles.map { if (it.id == profile.id) it.copy(avatar = uri) else it }) }
     }
+    fun saveProfileWallpaper(profile: Profile, uri: String?) {
+        editSettings { settings -> settings.copy(profiles = settings.profiles.map { if (it.id == profile.id) it.copy(wallpaperUri = uri) else it }) }
+    }
 
     fun saveProfile(profile: Profile, pin: String, onComplete: (Result<Unit>) -> Unit) {
         profileEdit(onComplete) { settings ->
             val previous = settings.profiles.firstOrNull { it.id == profile.id }
             val candidate = profile.copy(pinSalt = previous?.pinSalt, pinHash = previous?.pinHash,
-                avatar = if (previous != null) previous.avatar else profile.avatar)
+                avatar = if (previous != null) previous.avatar else profile.avatar,
+                wallpaperUri = if (previous != null) previous.wallpaperUri else profile.wallpaperUri)
             val protected = if (!candidate.child && pin.isNotEmpty()) withContext(Dispatchers.Default) {
                 ProfileSecurity.protect(candidate, pin)
             } else candidate

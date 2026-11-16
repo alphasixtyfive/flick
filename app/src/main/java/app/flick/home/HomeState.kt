@@ -40,7 +40,10 @@ data class HomeState(
     val profileError: String? = null,
     val profileErrorTarget: String? = null,
     val homeRequestVersion: Int = 0,
-)
+) {
+    val displayedWallpaperUri: String?
+        get() = HomePolicy.profile(settings).wallpaperUri ?: wallpaperUri
+}
 
 data class HomeActions(
     val launchApp: (AppEntry) -> Unit,
@@ -54,6 +57,8 @@ data class HomeActions(
     val deleteProfile: (Profile, (Result<Unit>) -> Unit) -> Unit,
     val chooseProfilePhoto: (Profile) -> Unit,
     val removeProfilePhoto: (Profile) -> Unit,
+    val chooseProfileWallpaper: (Profile) -> Unit,
+    val removeProfileWallpaper: (Profile) -> Unit,
     val searchPlaces: (String) -> Unit,
     val rotateWallpaper: () -> Unit,
     val saveWallpaperSettings: (WallpaperSettings, WallpaperSettings) -> Unit,

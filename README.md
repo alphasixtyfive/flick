@@ -8,7 +8,7 @@ A simple, customisable launcher for Android TV, built with Kotlin and Compose fo
 Requires Android 8.0 or later.
 
 - Favourite apps, All apps and Continue watching, with remote long-press menus.
-- Adult and child profiles, parent PINs and profile photos.
+- Adult and child profiles, parent PINs, profile photos and individual wallpapers.
 - Photo slideshows from selected pictures, document folders or image URLs.
 - Clock, weather, navigation sounds and configurable home-screen controls.
 - Home Assistant lights, switches, scenes and device status.

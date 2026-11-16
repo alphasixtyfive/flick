@@ -35,6 +35,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var model: LauncherViewModel
     private val sounds get() = runtime.navigationSounds
     private var photoProfileId: String? = null
+    private var choosingProfileWallpaper = false
     private val runtime get() = (application as FlickApplication).runtime
     private val notificationPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
     private val continuePermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -47,10 +48,15 @@ class MainActivity : ComponentActivity() {
     }
     private val photoPicker = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         val profile = model.state.value.settings.profiles.firstOrNull { it.id == photoProfileId }
+        val wallpaper = choosingProfileWallpaper
         photoProfileId = null
+        choosingProfileWallpaper = false
         if (uri != null && profile != null && model.canManage()) {
             runCatching { contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION) }
-                .onSuccess { model.saveProfilePhoto(profile, uri.toString()) }
+                .onSuccess {
+                    if (wallpaper) model.saveProfileWallpaper(profile, uri.toString())
+                    else model.saveProfilePhoto(profile, uri.toString())
+                }
                 .onFailure { model.message("This photo provider cannot keep the image available. Choose another source.") }
         }
     }
@@ -73,6 +79,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         model = ViewModelProvider(this)[LauncherViewModel::class.java]
         photoProfileId = savedInstanceState?.getString("photoProfileId")
+        choosingProfileWallpaper = savedInstanceState?.getBoolean("choosingProfileWallpaper") ?: false
         setContent {
             val state by model.state.collectAsStateWithLifecycle()
             val actions = remember(model, sounds) { createActions() }
@@ -100,6 +107,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onSaveInstanceState(outState: Bundle) {
         photoProfileId?.let { outState.putString("photoProfileId", it) }
+        outState.putBoolean("choosingProfileWallpaper", choosingProfileWallpaper)
         super.onSaveInstanceState(outState)
     }
 
@@ -135,6 +143,8 @@ class MainActivity : ComponentActivity() {
         chooseProfile = model::chooseProfile,
         chooseProfilePhoto = ::chooseProfilePhoto,
         removeProfilePhoto = { model.saveProfilePhoto(it, null) },
+        chooseProfileWallpaper = ::chooseProfileWallpaper,
+        removeProfileWallpaper = { model.saveProfileWallpaper(it, null) },
         searchPlaces = model::searchPlaces,
         rotateWallpaper = model::rotateWallpaper,
         saveWallpaperSettings = model::saveWallpaperSettings,
@@ -186,6 +196,14 @@ class MainActivity : ComponentActivity() {
     private fun chooseProfilePhoto(profile: Profile) {
         if (!model.canManage()) return
         photoProfileId = profile.id
+        choosingProfileWallpaper = false
+        runCatching { photoPicker.launch(arrayOf("image/*")) }.onFailure { model.message("No photo picker is installed") }
+    }
+
+    private fun chooseProfileWallpaper(profile: Profile) {
+        if (!model.canManage()) return
+        photoProfileId = profile.id
+        choosingProfileWallpaper = true
         runCatching { photoPicker.launch(arrayOf("image/*")) }.onFailure { model.message("No photo picker is installed") }
     }
 

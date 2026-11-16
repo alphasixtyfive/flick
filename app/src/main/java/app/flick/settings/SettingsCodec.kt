@@ -51,7 +51,8 @@ object SettingsCodec {
                 val hash = p.optString("pinHash").takeIf { it.matches(Regex("[a-f0-9]{64}")) }
                 require((salt == null) == (hash == null)) { "Incomplete profile protection" }
                 Profile(id, name, p.optBoolean("child"), imageUri(p.optString("avatar")),
-                    packages(p.optJSONArray("allowedApps"), 100), salt, hash)
+                    packages(p.optJSONArray("allowedApps"), 100), salt, hash,
+                    wallpaperUri(p.optString("wallpaperUri")))
             }.also { require(it.map(Profile::id).distinct().size == it.size) { "Duplicate profile IDs" } }
         }
         require(profiles.any { !it.child }) { "Keep at least one adult profile" }
@@ -94,7 +95,19 @@ object SettingsCodec {
         put("activeProfileId", settings.activeProfileId)
         put("profiles", JSONArray(settings.profiles.map { p -> JSONObject().put("id", p.id).put("name", p.name)
             .put("child", p.child).put("avatar", p.avatar).put("allowedApps", JSONArray(p.allowedApps))
-            .put("pinSalt", p.pinSalt).put("pinHash", p.pinHash) }))
+            .put("pinSalt", p.pinSalt).put("pinHash", p.pinHash).put("wallpaperUri", p.wallpaperUri) }))
+    }
+
+    private fun wallpaperUri(value: String): String? {
+        val clean = value.trim().takeIf { it.isNotEmpty() } ?: return null
+        val uri = runCatching { java.net.URI(clean) }.getOrNull()
+        require(clean.length <= 4096 && clean.none(Char::isISOControl) && !clean.contains('\\') &&
+            uri != null && uri.rawUserInfo == null && when (uri.scheme) {
+                "http", "https" -> !uri.host.isNullOrBlank()
+                "content" -> !uri.rawAuthority.isNullOrBlank()
+                else -> false
+            }) { "Choose a profile wallpaper using the photo picker or an HTTP(S) image" }
+        return clean
     }
 
     private fun imageUri(value: String): String? = value.takeIf { it.length <= 4096 &&
