@@ -298,7 +298,8 @@ class HomeAssistantRepository(context: Context, scope: CoroutineScope) {
     private suspend fun readOne(connection: HaCredentials, spec: HaControlSpec, epoch: Long) {
         val version = versions.getOrPut(spec.entityId) { AtomicLong() }.get()
         try {
-            val state = JSONObject(transport.request(connection, "/api/states/${spec.entityId}"))
+            val response = transport.request(connection, "/api/states/${spec.entityId}")
+            val state = withContext(Dispatchers.Default) { JSONObject(response) }
             reportHttp(epoch, available = true)
             observed(spec.entityId, state, epoch, version)
         } catch (cancelled: CancellationException) { throw cancelled }
