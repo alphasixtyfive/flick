@@ -27,6 +27,8 @@ Enable it in Home screen settings and grant TV-listings access when Android asks
 
 Choose a weather location through city search in Clock & weather, then select Celsius or Fahrenheit.
 Location search and conditions use Open-Meteo.
+The weather icon reflects the reported condition and day/night value. Returning from another app
+keeps the last reading visible while it refreshes; changing location clears the old location's reading.
 
 ## Profiles
 
@@ -78,6 +80,13 @@ including an intentionally empty selection. Full-resolution versions are in the 
 NAS folders need an installed Android document provider that exposes them. Flick does not include
 an SMB client. Existing HTTP photo servers can supply direct image links under Advanced.
 An empty selection uses the built-in backdrop. Automatic rotation pauses while another app is open.
+
+## Screensaver
+
+Settings → Device → Screensaver opens Android's screensaver settings. Choose an installed screensaver
+there for idle videos or photos. [Aerial Views](https://github.com/theothernt/AerialViews) supports
+aerial videos and local or network media. It is optional and must be installed separately.
+The screensaver is managed by Android; Flick's Home wallpaper stays independent.
 
 ## Home Assistant
 

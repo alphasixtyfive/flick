@@ -103,6 +103,8 @@ fun NativeSettingsPanel(
                 Text("Hold the profile button in an adult profile to open Settings, even when its button is hidden. The remote’s Settings key also works.", style = androidx.tv.material3.MaterialTheme.typography.bodySmall)
             }
             SettingsPage.Device -> {
+                TvSettingRow("Screensaver", detail = "Idle videos and photos", icon = Icons.Default.Landscape,
+                    onClick = actions.openScreensaverSettings)
                 TvSettingRow("Import setup", detail = "Profiles and launcher preferences", icon = Icons.Default.FileOpen, onClick = actions.importSetup)
                 TvSettingRow("Android settings", icon = Icons.Default.Tv, onClick = actions.openAndroidSettings)
             }

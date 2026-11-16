@@ -180,6 +180,7 @@ class MainActivity : ComponentActivity() {
         clearProfileError = model::clearProfileError,
         saveHomeControls = model::saveHomeControls,
         openAndroidSettings = { if (model.canManage()) openAndroid(Intent(Settings.ACTION_SETTINGS)) },
+        openScreensaverSettings = { if (model.canManage()) openAndroid(Intent(Settings.ACTION_DREAM_SETTINGS)) },
         importSetup = {
             if (model.canManage()) runCatching { setupPicker.launch(arrayOf("application/json", "text/plain")) }
                 .onFailure { model.message("No file picker is installed") }

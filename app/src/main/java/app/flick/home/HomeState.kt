@@ -86,6 +86,7 @@ data class HomeActions(
     val clearProfileError: () -> Unit,
     val saveHomeControls: (List<HaControlSpec>, (Result<Unit>) -> Unit) -> Unit,
     val openAndroidSettings: () -> Unit,
+    val openScreensaverSettings: () -> Unit,
     val importSetup: () -> Unit,
     val dismissMessage: () -> Unit,
     val showMessage: (String) -> Unit,
