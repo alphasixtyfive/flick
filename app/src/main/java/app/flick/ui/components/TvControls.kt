@@ -2,17 +2,14 @@ package app.flick.ui.components
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -39,14 +36,11 @@ fun TvFocusSurface(
     content: @Composable BoxScope.() -> Unit,
 ) {
     val interactions = interactionSource ?: remember { MutableInteractionSource() }
-    val focused by interactions.collectIsFocusedAsState()
     Surface(
         // These remain available to accessibility actions. Hardware activation is handled below.
         onClick = onClick,
         onLongClick = onLongClick,
-        modifier = modifier
-            .tvRemoteInput(interactions, onClick, onLongClick)
-            .shadow(if (focused && focusedScale > 1f) 4.dp else 0.dp, shape, clip = false),
+        modifier = modifier.tvRemoteInput(interactions, onClick, onLongClick),
         shape = ClickableSurfaceDefaults.shape(shape),
         colors = ClickableSurfaceDefaults.colors(
             containerColor = containerColor,
