@@ -9,10 +9,12 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import app.flick.apps.AppEntry
+import app.flick.R
 import app.flick.wallpaper.BuiltInWallpaperPicker
 import app.flick.ui.components.NativeTextField
 import app.flick.ui.components.TvDialog
@@ -160,7 +162,8 @@ internal fun ProfileEditor(profile: Profile, profiles: List<Profile>, apps: List
         if (child) {
             Text("Set child accounts and content limits inside each media app too.", style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = .7f))
             if (existing && currentProfile.child) TvSettingRow("Allowed apps", icon = Icons.Default.Apps,
-                detail = "${currentProfile.allowedApps.size} apps", onClick = { if (pending == null) editingApps = true })
+                detail = pluralStringResource(R.plurals.allowed_apps_count, currentProfile.allowedApps.size, currentProfile.allowedApps.size),
+                onClick = { if (pending == null) editingApps = true })
             else Text("Save this profile before choosing allowed apps.", style = MaterialTheme.typography.bodySmall)
         }
         if (existing && profiles.size > 1 && (currentProfile.child || profiles.count { !it.child } > 1)) {
