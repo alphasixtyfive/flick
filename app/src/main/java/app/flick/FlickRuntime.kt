@@ -7,6 +7,7 @@ import app.flick.homeassistant.HomeAssistantRepository
 import app.flick.integration.BridgeCommand
 import app.flick.integration.FlickBridgeClient
 import app.flick.notifications.NotificationController
+import app.flick.platform.NavigationSounds
 import app.flick.profiles.ProfileSecurity
 import app.flick.settings.SettingsStore
 import app.flick.wallpaper.WallpaperRepository
@@ -25,6 +26,7 @@ import java.util.concurrent.ConcurrentHashMap
 class FlickRuntime(context: Context) {
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     val store = SettingsStore(context)
+    val navigationSounds = NavigationSounds(context.applicationContext)
     val profiles = ProfileSecurity(context)
     val catalogue = AndroidCatalogue(context)
     val homeAssistant = HomeAssistantRepository(context, scope)
@@ -34,7 +36,8 @@ class FlickRuntime(context: Context) {
     @Volatile var switchingProfile = false
     private var visible = false
     private val commands = LauncherCommands(this)
-    val notifications = NotificationController(context, scope) { action ->
+    val notifications = NotificationController(context, scope,
+        onNavigationFeedback = { navigationSounds.play(store.state.value.navigationSound) }) { action ->
         if (HomePolicy.canManage(store.state.value)) scope.launch {
             runCatching { bridge.notificationAction(action.noticeId, action.actionId) }
         }

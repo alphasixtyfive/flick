@@ -43,7 +43,6 @@ data class HomeState(
 )
 
 data class HomeActions(
-    val playNavigationSound: () -> Unit,
     val launchApp: (AppEntry) -> Unit,
     val openContinue: (ContinueItem) -> Unit,
     val updateSettings: (LauncherSettings, LauncherSettings) -> Unit,

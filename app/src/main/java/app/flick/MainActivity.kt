@@ -11,17 +11,21 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import app.flick.home.FlickScreen
 import app.flick.home.HomeActions
-import app.flick.platform.NavigationSounds
 import app.flick.profiles.Profile
 import app.flick.settings.SetupImport
 import app.flick.settings.ProjectLinks
 import app.flick.ui.theme.FlickTheme
+import app.flick.ui.components.LocalNavigationFeedback
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -29,7 +33,7 @@ import kotlinx.coroutines.withContext
 
 class MainActivity : ComponentActivity() {
     private lateinit var model: LauncherViewModel
-    private lateinit var sounds: NavigationSounds
+    private val sounds get() = runtime.navigationSounds
     private var photoProfileId: String? = null
     private val runtime get() = (application as FlickApplication).runtime
     private val notificationPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
@@ -68,12 +72,21 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         model = ViewModelProvider(this)[LauncherViewModel::class.java]
-        sounds = NavigationSounds(this)
         photoProfileId = savedInstanceState?.getString("photoProfileId")
         setContent {
             val state by model.state.collectAsStateWithLifecycle()
             val actions = remember(model, sounds) { createActions() }
-            FlickTheme(largeText = state.settings.largeText) { FlickScreen(state, actions) }
+            val feedback = remember(model, sounds) { { sounds.play(model.state.value.settings.navigationSound) } }
+            var previousSound by remember { mutableStateOf(state.settings.navigationSound) }
+            LaunchedEffect(state.settings.navigationSound) {
+                if (previousSound != state.settings.navigationSound) {
+                    previousSound = state.settings.navigationSound
+                    sounds.play(state.settings.navigationSound, preview = true)
+                }
+            }
+            CompositionLocalProvider(LocalNavigationFeedback provides feedback) {
+                FlickTheme(largeText = state.settings.largeText) { FlickScreen(state, actions) }
+            }
         }
         readSetupIntent(intent)
     }
@@ -99,8 +112,6 @@ class MainActivity : ComponentActivity() {
         }
     }
     override fun onPause() { if (::model.isInitialized) { model.setActive(false); runtime.pause() }; super.onPause() }
-
-    override fun onDestroy() { if (::sounds.isInitialized) sounds.close(); super.onDestroy() }
 
     private fun openAndroid(intent: Intent) {
         runCatching { startActivity(intent) }.onFailure { model.message("This Android screen is unavailable") }
@@ -162,7 +173,6 @@ class MainActivity : ComponentActivity() {
         dismissMessage = model::dismissMessage,
         saveProfile = model::saveProfile,
         deleteProfile = model::deleteProfile,
-        playNavigationSound = { sounds.play(model.state.value.settings.navigationSound) },
         showMessage = model::message,
         openRecoverySettings = {
             if (model.state.value.recoveryRequired) openAndroid(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName")))

@@ -34,7 +34,7 @@ internal fun TvDialog(
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         TvOverlayTheme {
             Column(
-                Modifier.width(width).heightIn(max = 460.dp)
+                Modifier.navigationFeedback().width(width).heightIn(max = 460.dp)
                     .background(FlickColors.Background, RoundedCornerShape(TvLayout.DialogRadius))
                     .padding(24.dp).focusRequester(focus)
                     .focusProperties { exit = { FocusRequester.Cancel } }.focusGroup(),

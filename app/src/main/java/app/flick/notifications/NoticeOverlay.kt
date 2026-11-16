@@ -17,9 +17,10 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import app.flick.R
+import app.flick.platform.isNavigationFeedback
 
 /** An app overlay, never a system alert impersonation or a full-screen intent. */
-internal class NoticeOverlay(private val context: Context) {
+internal class NoticeOverlay(private val context: Context, private val onNavigationFeedback: () -> Unit) {
     private val windows = context.getSystemService(WindowManager::class.java)
     private val density = context.resources.displayMetrics.density
     private val foreground = Color.rgb(237, 240, 245)
@@ -34,6 +35,7 @@ internal class NoticeOverlay(private val context: Context) {
         dismiss()
         val card = object : LinearLayout(context) {
             override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+                if (isNavigationFeedback(event.action, event.keyCode, event.repeatCount, event.isLongPress)) onNavigationFeedback()
                 if (event.keyCode == KeyEvent.KEYCODE_BACK) {
                     if (event.action == KeyEvent.ACTION_UP && !event.isCanceled) onDismiss()
                     return true
@@ -41,6 +43,7 @@ internal class NoticeOverlay(private val context: Context) {
                 return super.dispatchKeyEvent(event)
             }
         }.apply {
+            isSoundEffectsEnabled = false
             orientation = LinearLayout.VERTICAL
             setPadding(dp(18), dp(16), dp(18), dp(16))
             background = shape(surface, 20)
@@ -132,6 +135,7 @@ internal class NoticeOverlay(private val context: Context) {
         isFocusable = true
         isFocusableInTouchMode = true
         isClickable = true
+        isSoundEffectsEnabled = false
         background = StateListDrawable().apply {
             addState(intArrayOf(android.R.attr.state_focused), shape(this@NoticeOverlay.foreground, 12))
             addState(intArrayOf(android.R.attr.state_pressed), shape(this@NoticeOverlay.foreground, 12))

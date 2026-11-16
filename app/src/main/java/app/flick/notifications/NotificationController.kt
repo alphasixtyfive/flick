@@ -21,6 +21,7 @@ import kotlinx.coroutines.withContext
 class NotificationController(
     context: Context,
     private val scope: CoroutineScope,
+    onNavigationFeedback: () -> Unit,
     private val onAction: (NoticeAction) -> Unit,
 ) : AutoCloseable {
     private val context = context.applicationContext
@@ -28,7 +29,7 @@ class NotificationController(
     val state: StateFlow<NotificationState> = mutableState.asStateFlow()
     private val queue = NoticeQueue()
     private val images = NoticeImages()
-    private val overlay = NoticeOverlay(this.context)
+    private val overlay = NoticeOverlay(this.context, onNavigationFeedback)
     private var service: NotificationService? = null
     private var expiry: Job? = null
     private var rendering: Job? = null
