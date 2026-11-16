@@ -9,6 +9,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -24,6 +25,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.IntSize
 import coil.imageLoader
 import coil.request.CachePolicy
 import coil.request.ImageRequest
@@ -41,12 +43,21 @@ fun WallpaperBackground(
     dimAmount: Float,
     modifier: Modifier = Modifier,
 ) {
+    BoxWithConstraints(modifier.background(Brush.verticalGradient(listOf(Color(0xFF243448), Color(0xFF111720))))) {
+        val target = IntSize(constraints.maxWidth.coerceIn(1, 3840), constraints.maxHeight.coerceIn(1, 2160))
+        WallpaperFrames(photo, target)
+        Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = dimAmount.takeIf { it.isFinite() }?.coerceIn(0f, .7f) ?: .18f)))
+    }
+}
+
+@Composable
+private fun WallpaperFrames(photo: WallpaperPhoto?, target: IntSize) {
     val context = LocalContext.current
     var shown by remember { mutableStateOf<ImageBitmap?>(null) }
     var previous by remember { mutableStateOf<ImageBitmap?>(null) }
     val opacity = remember { Animatable(1f) }
 
-    LaunchedEffect(photo?.uri) {
+    LaunchedEffect(photo?.uri, target) {
         // A rapid Next press settles the last successful frame before fetching another.
         opacity.snapTo(1f)
         previous = null
@@ -56,7 +67,7 @@ fun WallpaperBackground(
         }
         val request = ImageRequest.Builder(context)
             .data(photo.uri)
-            .size(1920, 1080)
+            .size(target.width, target.height)
             .scale(Scale.FIT)
             .precision(Precision.EXACT)
             .memoryCachePolicy(CachePolicy.DISABLED)
@@ -77,11 +88,8 @@ fun WallpaperBackground(
         previous = null
     }
 
-    Box(modifier.background(Brush.verticalGradient(listOf(Color(0xFF243448), Color(0xFF111720))))) {
-        previous?.let { Image(it, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop) }
-        shown?.let { Image(it, contentDescription = null, modifier = Modifier.fillMaxSize().graphicsLayer { alpha = opacity.value }, contentScale = ContentScale.Crop) }
-        Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = dimAmount.takeIf { it.isFinite() }?.coerceIn(0f, .7f) ?: .18f)))
-    }
+    previous?.let { Image(it, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop) }
+    shown?.let { Image(it, contentDescription = null, modifier = Modifier.fillMaxSize().graphicsLayer { alpha = opacity.value }, contentScale = ContentScale.Crop) }
 }
 
 private fun frame(drawable: Drawable): ImageBitmap {
