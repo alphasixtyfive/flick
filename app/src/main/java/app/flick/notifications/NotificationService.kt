@@ -96,7 +96,7 @@ class NotificationService : Service() {
     private fun promote() {
         val open = PendingIntent.getActivity(this, 0, Intent(this, MainActivity::class.java), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         val notification = Notification.Builder(this, Channel)
-            .setSmallIcon(R.drawable.flick_icon)
+            .setSmallIcon(R.drawable.flick_notification)
             .setContentTitle("Flick")
             .setContentText("Home Assistant connection is enabled")
             .setContentIntent(open)
