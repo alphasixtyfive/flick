@@ -27,6 +27,8 @@ internal class ProfileSession(settings: LauncherSettings) {
     }
 
     fun canManage(settings: LauncherSettings) = profile(settings)?.child == false
+    fun canEditAppOrder(settings: LauncherSettings, profileId: String, generation: Long): Boolean =
+        generation == mutable.value.generation && profile(settings)?.id == profileId
     fun canLaunch(settings: LauncherSettings, packageName: String): Boolean = profile(settings)?.let {
         !it.child || packageName in it.allowedApps
     } ?: false

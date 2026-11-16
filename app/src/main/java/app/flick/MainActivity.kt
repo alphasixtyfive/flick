@@ -188,6 +188,7 @@ class MainActivity : ComponentActivity() {
         dismissMessage = model::dismissMessage,
         saveProfile = model::saveProfile,
         setProfileApp = model::setProfileApp,
+        reorderApps = model::reorderApps,
         deleteProfile = model::deleteProfile,
         showMessage = model::message,
         openRecoverySettings = {

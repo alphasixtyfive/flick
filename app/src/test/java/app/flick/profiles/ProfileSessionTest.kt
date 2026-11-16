@@ -28,6 +28,23 @@ class ProfileSessionTest {
         assertFalse(session.canManage(settings))
     }
 
+    @Test fun reorderingRequiresTheCurrentAuthorizedProfileAndSession() {
+        val settings = family().copy(activeProfileId = child.id)
+        val session = ProfileSession(settings)
+        val generation = session.state.value.generation
+        assertFalse(session.canEditAppOrder(settings, child.id, generation))
+        assertTrue(session.authorize(settings, child, generation))
+        assertTrue(session.canEditAppOrder(settings, child.id, generation))
+        assertFalse(session.canEditAppOrder(settings, adult.id, generation))
+        assertFalse(session.canManage(settings))
+        val changedRole = settings.copy(profiles = listOf(adult, child.copy(child = false)))
+        assertFalse(session.canEditAppOrder(changedRole, child.id, generation))
+        session.revoke()
+        assertFalse(session.canEditAppOrder(settings, child.id, generation))
+        assertTrue(session.authorize(settings, child, session.state.value.generation))
+        assertFalse(session.canEditAppOrder(settings, child.id, generation))
+    }
+
     @Test fun wakeRequiresANewUnlockEvenForTheSameSavedAdult() {
         val settings = family()
         val session = ProfileSession(settings)

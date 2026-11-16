@@ -24,6 +24,10 @@ changing streaming history. Restore removed titles is under Home screen settings
 The app drawer uses a five-column grid with app names beneath the banners. A long-press menu stays
 over the drawer; Back or adding/removing a Home favourite returns to the same app and scroll position.
 
+Everyone can rearrange the apps on their own Home screen: hold OK on an app, choose **Move**,
+use Left/Right, then press OK to save. Back cancels. Each profile keeps its own order.
+Children can move only their allowed apps; adding or removing access, App info and uninstall remain adult controls.
+
 Continue watching uses Android's Watch Next provider, so availability depends on the apps and TV box.
 Enable it in Home screen settings and grant TV-listings access when Android asks.
 

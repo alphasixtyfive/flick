@@ -55,7 +55,7 @@ object SettingsCodec {
                 require((salt == null) == (hash == null)) { "Incomplete profile protection" }
                 Profile(id, name, p.optBoolean("child"), imageUri(p.optString("avatar")),
                     packages(p.optJSONArray("allowedApps"), 100), salt, hash,
-                    wallpaperUri(p.optString("wallpaperUri")))
+                    wallpaperUri(p.optString("wallpaperUri")), packages(p.optJSONArray("appOrder"), 100))
             }.also { require(it.map(Profile::id).distinct().size == it.size) { "Duplicate profile IDs" } }
         }
         require(profiles.any { !it.child }) { "Keep at least one adult profile" }
@@ -106,7 +106,8 @@ object SettingsCodec {
         settings.profileStartup?.let { put("profileStartup", it.name) }
         put("profiles", JSONArray(settings.profiles.map { p -> JSONObject().put("id", p.id).put("name", p.name)
             .put("child", p.child).put("avatar", p.avatar).put("allowedApps", JSONArray(p.allowedApps))
-            .put("pinSalt", p.pinSalt).put("pinHash", p.pinHash).put("wallpaperUri", p.wallpaperUri) }))
+            .put("pinSalt", p.pinSalt).put("pinHash", p.pinHash).put("wallpaperUri", p.wallpaperUri)
+            .put("appOrder", JSONArray(p.appOrder)) }))
     }
 
     private fun wallpaperUri(value: String): String? {

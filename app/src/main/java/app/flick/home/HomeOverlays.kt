@@ -51,21 +51,24 @@ internal fun HomeOverlays(panel: HomePanel, state: HomeState, actions: HomeActio
     when (panel) {
         is HomePanel.AppOptions -> TvDialog(panel.app.name, onDismiss = onAppOptionsBack) {
             val favorites = state.settings.favorites ?: state.apps.take(5).map { it.packageName }
-            val pinned = panel.app.packageName in favorites
+            val child = HomePolicy.profile(state.settings).child
+            val pinned = panel.app.packageName in HomePolicy.homeAppPackages(state.settings, state.apps)
             if (pinned) TvSettingRow(if (panel.fromAllApps) "Move on Home" else "Move", icon = Icons.Default.SwapHoriz,
                 onClick = { runAppOptionsAction(isCurrent) { onMove(panel.app) } })
-            TvSettingRow(if (pinned) "Remove from Home" else "Add to Home", icon = if (pinned) Icons.Default.Remove else Icons.Default.Add,
-                onClick = {
-                    runAppOptionsAction(isCurrent) {
-                        val updated = if (pinned) favorites - panel.app.packageName else HomePolicy.addFavorite(favorites, panel.app.packageName)
-                        if (updated == null) actions.showMessage("Home supports up to ${HomePolicy.MAX_FAVORITES} apps. Remove one before adding another.")
-                        else { actions.updateSettings(state.settings, state.settings.copy(favorites = updated)); onAppOptionsBack() }
-                    }
-                })
-            TvSettingRow("App info", icon = Icons.Default.Info,
-                onClick = { runAppOptionsAction(isCurrent) { onAppOptionsBack(); actions.appInfo(panel.app) } })
-            if (panel.app.canUninstall) TvSettingRow("Uninstall", icon = Icons.Default.Delete,
-                onClick = { runAppOptionsAction(isCurrent) { onAppOptionsBack(); actions.uninstallApp(panel.app) } })
+            if (!child) {
+                TvSettingRow(if (pinned) "Remove from Home" else "Add to Home", icon = if (pinned) Icons.Default.Remove else Icons.Default.Add,
+                    onClick = {
+                        runAppOptionsAction(isCurrent) {
+                            val updated = if (pinned) favorites - panel.app.packageName else HomePolicy.addFavorite(favorites, panel.app.packageName)
+                            if (updated == null) actions.showMessage("Home supports up to ${HomePolicy.MAX_FAVORITES} apps. Remove one before adding another.")
+                            else { actions.updateSettings(state.settings, state.settings.copy(favorites = updated)); onAppOptionsBack() }
+                        }
+                    })
+                TvSettingRow("App info", icon = Icons.Default.Info,
+                    onClick = { runAppOptionsAction(isCurrent) { onAppOptionsBack(); actions.appInfo(panel.app) } })
+                if (panel.app.canUninstall) TvSettingRow("Uninstall", icon = Icons.Default.Delete,
+                    onClick = { runAppOptionsAction(isCurrent) { onAppOptionsBack(); actions.uninstallApp(panel.app) } })
+            }
         }
         is HomePanel.ContinueOptions -> TvDialog("", onDismiss = onClose, width = 300.dp) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {

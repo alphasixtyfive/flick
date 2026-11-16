@@ -151,6 +151,21 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         editSettings { current -> SettingsCodec.mergePresentation(current, before, settings) }
     }
 
+    fun reorderApps(profileId: String, order: List<String>) {
+        val generation = runtime.profileSession.state.value.generation
+        if (switchingProfile || !runtime.profileSession.canEditAppOrder(store.state.value, profileId, generation)) return
+        task {
+            profileLock.withLock {
+                store.update { current ->
+                    check(!switchingProfile && runtime.profileSession.canEditAppOrder(current, profileId, generation)) {
+                        "Choose this profile again"
+                    }
+                    HomePolicy.reorderApps(current, profileId, order, allApps)
+                }
+            }
+        }
+    }
+
     fun removeContinue(item: ContinueItem) {
         editSettings { current -> current.copy(removedContinue = (current.removedContinue + HomePolicy.continueKey(item)).takeLastBounded(250)) }
     }
@@ -333,7 +348,8 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             val candidate = profile.copy(pinSalt = previous?.pinSalt, pinHash = previous?.pinHash,
                 allowedApps = previous?.allowedApps ?: profile.allowedApps,
                 avatar = if (previous != null) previous.avatar else profile.avatar,
-                wallpaperUri = if (previous != null) previous.wallpaperUri else profile.wallpaperUri)
+                wallpaperUri = if (previous != null) previous.wallpaperUri else profile.wallpaperUri,
+                appOrder = previous?.appOrder ?: profile.appOrder)
             val protected = if (!candidate.child && pin.isNotEmpty()) withContext(Dispatchers.Default) {
                 ProfileSecurity.protect(candidate, pin)
             } else candidate

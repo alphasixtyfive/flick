@@ -11,8 +11,8 @@ android {
         applicationId = "app.flick"
         minSdk = 26
         targetSdk = 35
-        versionCode = 215
-        versionName = "0.2.15"
+        versionCode = 216
+        versionName = "0.2.16"
         resValue("string", "app_name", "Flick")
     }
     buildFeatures { compose = true; buildConfig = true }

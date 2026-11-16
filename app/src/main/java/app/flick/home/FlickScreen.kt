@@ -87,7 +87,7 @@ fun FlickScreen(state: HomeState, actions: HomeActions) {
     val showNextWallpaper = state.settings.showWallpaper && profile.wallpaperUri == null
     val apps = HomePolicy.visibleApps(state.settings, state.apps)
     val byPackage = apps.associateBy { it.packageName }
-    val favorites = if (child) apps.map { it.packageName } else state.settings.favorites ?: apps.take(5).map { it.packageName }
+    val favorites = HomePolicy.homeAppPackages(state.settings, state.apps)
     var panel by remember { mutableStateOf<HomePanel?>(null) }
     var settingsPage by remember { mutableStateOf(SettingsPage.Root) }
     var retainedPanel by remember { mutableStateOf<HomePanel?>(null) }
@@ -120,9 +120,9 @@ fun FlickScreen(state: HomeState, actions: HomeActions) {
                 if (backgroundEnabled && !hadPanel) returnFocus = id
             }
         }
-    var moving by remember { mutableStateOf<String?>(null) }
-    var moveOrder by remember { mutableStateOf<List<String>>(emptyList()) }
-    val movePress = remember { RemotePress() }
+    var moving by remember(profile.id, state.profileSession.generation) { mutableStateOf<String?>(null) }
+    var moveOrder by remember(profile.id, state.profileSession.generation) { mutableStateOf<List<String>>(emptyList()) }
+    val movePress = remember(profile.id, state.profileSession.generation) { RemotePress() }
     val displayedApps = (if (moving != null) moveOrder else favorites).mapNotNull(byPackage::get)
     val lastTopAction = when {
         showNextWallpaper -> "wallpaper"
@@ -237,7 +237,7 @@ fun FlickScreen(state: HomeState, actions: HomeActions) {
                 when (event.type) {
                     KeyEventType.KeyDown -> movePress.down(key.keyCode, key.repeatCount)
                     KeyEventType.KeyUp -> if (movePress.up(key.keyCode, key.isCanceled) == RemotePress.Release.Click) {
-                        actions.updateSettings(state.settings, state.settings.copy(favorites = moveOrder.filter(byPackage::containsKey)))
+                        actions.reorderApps(profile.id, moveOrder.filter(byPackage::containsKey))
                         moving = null
                     }
                 }
@@ -314,11 +314,11 @@ fun FlickScreen(state: HomeState, actions: HomeActions) {
                         compact = state.settings.compactTiles, moving = moving == app.packageName,
                         onClick = {
                             if (moving != null) {
-                                actions.updateSettings(state.settings, state.settings.copy(favorites = moveOrder))
+                                actions.reorderApps(profile.id, moveOrder)
                                 moving = null
                             } else actions.launchApp(app)
                         },
-                        onLongClick = if (child) null else ({ openPanel(HomePanel.AppOptions(app)) }))
+                        onLongClick = { openPanel(HomePanel.AppOptions(app)) })
                 }
                 if (!child) item(key = "all-apps") {
                     TvFocusSurface(onClick = { openPanel(HomePanel.AllApps) },

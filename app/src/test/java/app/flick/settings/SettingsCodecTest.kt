@@ -76,4 +76,22 @@ class SettingsCodecTest {
         val stored = LauncherSettings(profiles = listOf(adult, Profile("child", "Child", child = true)), activeProfileId = "child")
         assertEquals(stored, SettingsCodec.readStored(SettingsCodec.write(stored)))
     }
+
+    @Test fun profileOrdersRoundTripAndOlderRecordsNeedNoMigration() {
+        val settings = LauncherSettings(profiles = listOf(Profile("home", "Home", appOrder = listOf("org.example.second", "org.example.first"))))
+        assertEquals(settings, SettingsCodec.readStored(SettingsCodec.write(settings)))
+        val older = SettingsCodec.write(settings)
+        older.getJSONArray("profiles").getJSONObject(0).remove("appOrder")
+        assertEquals(emptyList<String>(), SettingsCodec.readStored(older).profiles[0].appOrder)
+    }
+
+    @Test fun importedProfileOrdersAreBoundedAndCannotContainIntentPayloads() {
+        val settings = LauncherSettings(profiles = listOf(Profile("home", "Home", appOrder =
+            listOf("org.example.video", "intent://payload", "org.example.video") + (0..110).map { "org.example.app$it" })))
+        val order = SettingsCodec.read(SettingsCodec.write(settings)).profiles[0].appOrder
+        assertEquals("org.example.video", order.first())
+        assertTrue(order.size <= 100)
+        assertEquals(order.size, order.distinct().size)
+        assertFalse("intent://payload" in order)
+    }
 }

@@ -53,6 +53,7 @@ data class HomeActions(
     val launchApp: (AppEntry) -> Unit,
     val openContinue: (ContinueItem) -> Unit,
     val updateSettings: (LauncherSettings, LauncherSettings) -> Unit,
+    val reorderApps: (String, List<String>) -> Unit,
     val appInfo: (AppEntry) -> Unit,
     val uninstallApp: (AppEntry) -> Unit,
     val removeContinue: (ContinueItem) -> Unit,
