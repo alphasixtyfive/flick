@@ -4,8 +4,23 @@
 
 <h1 align="center">Flick</h1>
 
-A simple, customisable launcher for Android TV, built with Kotlin and Compose for TV.
-Requires Android 8.0 or later.
+<p align="center">An Android TV launcher with family profiles, photo wallpapers and Home Assistant controls.</p>
+
+<p align="center">
+  <a href="https://github.com/alphasixtyfive/flick/releases/latest"><strong>Download APK</strong></a>
+  | <a href="SETUP.md">Setup guide</a>
+  | <a href="docs/kids-profiles.md">Kids profiles</a>
+  | <a href="docs/home-assistant-examples.md">Home Assistant examples</a>
+  | <a href="https://github.com/alphasixtyfive/flick/issues">Report an issue</a>
+</p>
+
+Flick puts your favourite apps and photos on the TV's home screen. Each person can have
+their own wallpaper and app order. Parents choose which apps appear for children and
+protect adult profiles with a PIN. Use the remote to open apps, move tiles or turn down
+the lights without opening a dashboard.
+
+Built with Kotlin and Compose for TV. Supports Android TV and Google TV devices running
+Android 8.0 or later.
 
 - Favourite apps, All apps and Continue watching, with remote long-press menus.
 - Adult and child profiles, parent PINs, profile photos and individual wallpapers.
@@ -18,26 +33,72 @@ Requires Android 8.0 or later.
 
 ## Get started
 
-Download the APK from [Releases](https://github.com/alphasixtyfive/flick/releases).
-See [SETUP.md](SETUP.md) for installation, profiles, photos and Home Assistant setup.
+1. Download the APK from the [latest release](https://github.com/alphasixtyfive/flick/releases/latest).
+2. Install it on the TV, open Flick, then choose it in Android's Home/default-app settings.
+3. Add your favourite apps and choose a wallpaper. Add family profiles when you're ready.
+
+Keep the stock launcher installed so you can switch back through Android Settings.
+Flick does not require root or an accessibility service. See the [setup guide](SETUP.md)
+for installation, remote controls, photos and permissions.
 
 ## Screenshots
 
-| Home | Profiles |
-| --- | --- |
-| ![Home screen](docs/screenshots/home.png) | ![Profile switcher](docs/screenshots/profiles.png) |
-| Wallpapers | Home Assistant |
-| ![Built-in wallpapers](docs/screenshots/wallpapers.png) | ![Home Assistant controls](docs/screenshots/home-assistant.png) |
+**A home for adults**
 
-[Settings](docs/screenshots/settings.png)
+[![Flick adult home with a personal wallpaper and favourite TV apps](docs/screenshots/home.png)](docs/screenshots/home.png)
+
+**A smaller home for kids**
+
+[![Flick child home showing only the apps chosen by a parent](docs/screenshots/kids.png)](docs/screenshots/kids.png)
+
+<table>
+  <tr>
+    <td><a href="docs/screenshots/profiles.png"><img src="docs/screenshots/profiles.png" width="480" alt="Flick profile chooser with fictional names and illustrated avatars"></a></td>
+    <td><a href="docs/screenshots/home-assistant.png"><img src="docs/screenshots/home-assistant.png" width="480" alt="Home Assistant lights and scenes in Flick's side panel"></a></td>
+  </tr>
+  <tr><td align="center"><strong>Who's watching?</strong></td><td align="center"><strong>Lights and scenes from the remote</strong></td></tr>
+</table>
+
+Screenshots render Flick's Compose screens with fictional profiles and sample data
+in an isolated test environment.
+Open an image to see it at full size. More: [wallpapers](docs/screenshots/wallpapers.png)
+and [settings](docs/screenshots/settings.png).
+
+## Kids profiles and streaming accounts
+
+A child profile shows the apps a parent allows. Children can rearrange those apps;
+changing access and opening adult settings require an adult profile.
+
+Streaming apps keep their own sign-in. Switching Flick profiles does not automatically
+switch the account inside Plex, Jellyfin or SmartTube. Where an app publishes two
+editions with different Android package names, you can keep one for adults and set up
+the other for a child. Our [kids profile guide](docs/kids-profiles.md) explains that
+workaround, the SmartTube and Jellyfin examples, and the content controls still needed.
 
 ## Home Assistant
 
-Light controls connect directly to Home Assistant. The optional
-[Flick TV component](https://github.com/alphasixtyfive/flick-home-assistant) adds paired devices,
-notifications over other apps and launcher management. Pairing and management are enabled on the TV.
+Choose the lights, switches, scenes and sensors you want on the TV. Ordinary controls
+connect directly to Home Assistant using a dedicated non-admin account.
 
-See [setup](SETUP.md#home-assistant) and the [connection protocol](docs/home-assistant-protocol.md).
+The optional [Flick TV integration](https://github.com/alphasixtyfive/flick-home-assistant)
+adds TV notifications, profile management and wallpaper controls. Once paired, a simple
+notification looks like this:
+
+```yaml
+action: notify.send_message
+target:
+  entity_id: notify.living_room_tv_notification
+data:
+  title: Laundry
+  message: The washing is finished.
+```
+
+Replace the entity ID with the one on your paired TV's device page. See
+[Home Assistant examples](docs/home-assistant-examples.md) for camera previews,
+notification buttons, a dashboard card and wallpaper actions, or the
+[connection protocol](docs/home-assistant-protocol.md) for development details.
+
+For Windows PC sensors, notifications and controls, see [HASS Connect](https://github.com/alphasixtyfive/HASSConnect).
 
 ## Build
 

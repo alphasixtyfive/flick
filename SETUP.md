@@ -51,6 +51,10 @@ automatically. Name, role and PIN edits still use Save profile; app switches do 
 These limits apply to Flick's app list; they do not create separate Android users or restrict content
 inside another app. Set up child accounts and content limits in Plex, Jellyfin and other media apps too.
 
+For a practical setup using separate official app editions for adults and children, see
+[Kids profiles and streaming accounts](docs/kids-profiles.md). It covers SmartTube stable/Beta,
+the official Jellyfin debug copy, and the limits of this workaround.
+
 Unlocking an adult profile opens a numeric keypad with four masked slots. Use the D-pad or the
 remote's number keys; the fourth digit checks the PIN automatically. Delete removes a digit and
 Back returns to the profile chooser. PINs are exactly four digits, including leading zeroes.
@@ -97,6 +101,9 @@ aerial videos and local or network media. It is optional and must be installed s
 The screensaver is managed by Android; Flick's Home wallpaper stays independent.
 
 ## Home Assistant
+
+See [Home Assistant examples](docs/home-assistant-examples.md) for a quick start, TV notifications,
+camera images, notification buttons and a dashboard card.
 
 Create a dedicated non-admin Home Assistant user. Sign in as that user and create a long-lived access
 token under its profile → Security. Enter the server address and token in Settings → Home Assistant,
