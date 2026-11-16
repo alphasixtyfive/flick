@@ -17,7 +17,18 @@ Requires Android 8.0 or later.
 
 ## Get started
 
+Download the APK from [Releases](https://github.com/alphasixtyfive/flick/releases).
 See [SETUP.md](SETUP.md) for installation, profiles, photos and Home Assistant setup.
+
+## Screenshots
+
+| Home | Profiles |
+| --- | --- |
+| ![Home screen](docs/screenshots/home.png) | ![Profile switcher](docs/screenshots/profiles.png) |
+| Wallpapers | Home Assistant |
+| ![Built-in wallpapers](docs/screenshots/wallpapers.png) | ![Home Assistant controls](docs/screenshots/home-assistant.png) |
+
+[Settings](docs/screenshots/settings.png)
 
 ## Home Assistant
 
