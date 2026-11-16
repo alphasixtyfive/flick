@@ -23,11 +23,6 @@ object HomePolicy {
         return if (profile.child) apps.filter { it.packageName in profile.allowedApps } else apps
     }
 
-    fun canLaunch(settings: LauncherSettings, packageName: String): Boolean {
-        val profile = profile(settings)
-        return !profile.child || packageName in profile.allowedApps
-    }
-
     fun canManage(settings: LauncherSettings): Boolean = !profile(settings).child
 
     /** Ordering changes presentation only; membership still comes from the parent's grants or favorites. */

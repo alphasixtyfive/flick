@@ -10,17 +10,15 @@ import org.junit.Test
 class HomePolicyTest {
     private val apps = listOf(AppEntry("org.example.video", "Video", null), AppEntry("org.example.browser", "Browser", null))
 
-    @Test fun aChildCanOnlyLaunchExplicitlyAllowedPackages() {
+    @Test fun aChildHomeShowsOnlyExplicitlyAllowedPackages() {
         val settings = LauncherSettings(profiles = listOf(Profile("child", "Child", true, allowedApps = listOf("org.example.video"))), activeProfileId = "child")
         assertEquals(listOf(apps[0]), HomePolicy.visibleApps(settings, apps))
-        assertFalse(HomePolicy.canLaunch(settings, "org.example.browser"))
         assertFalse(HomePolicy.canManage(settings))
     }
 
     @Test fun anUnknownActiveProfileFailsClosed() {
         val settings = LauncherSettings(activeProfileId = "missing")
         assertTrue(HomePolicy.visibleApps(settings, apps).isEmpty())
-        assertFalse(HomePolicy.canLaunch(settings, "org.example.video"))
         assertFalse(HomePolicy.canManage(settings))
     }
 

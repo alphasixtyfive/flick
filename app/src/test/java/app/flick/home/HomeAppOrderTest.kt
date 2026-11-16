@@ -2,6 +2,7 @@ package app.flick.home
 
 import app.flick.apps.AppEntry
 import app.flick.profiles.Profile
+import app.flick.profiles.ProfileSession
 import app.flick.settings.LauncherSettings
 import org.junit.Assert.*
 import org.junit.Test
@@ -38,7 +39,10 @@ class HomeAppOrderTest {
         val updated = HomePolicy.reorderApps(settings, child.id, listOf(third, second, first), apps)
         assertEquals(listOf(second, first), updated.profiles[1].appOrder)
         assertEquals(child.allowedApps, updated.profiles[1].allowedApps)
-        assertFalse(HomePolicy.canLaunch(updated, third))
+        val session = ProfileSession(updated)
+        assertTrue(session.authorize(updated, updated.profiles[1], session.state.value.generation))
+        assertTrue(session.canLaunch(updated, first))
+        assertFalse(session.canLaunch(updated, third))
         assertFalse(HomePolicy.canManage(updated))
         val injected = settings.copy(profiles = listOf(adult, child.copy(appOrder = listOf(third, second))))
         assertEquals(listOf(second, first), HomePolicy.homeAppPackages(injected, apps))
@@ -50,7 +54,10 @@ class HomeAppOrderTest {
         val updated = HomePolicy.reorderApps(latest, child.id, listOf(second, first), apps)
         assertEquals(listOf(first, third), updated.profiles[1].appOrder)
         assertEquals(allowedThird.allowedApps, updated.profiles[1].allowedApps)
-        assertFalse(HomePolicy.canLaunch(updated, second))
+        val session = ProfileSession(updated)
+        assertTrue(session.authorize(updated, updated.profiles[1], session.state.value.generation))
+        assertTrue(session.canLaunch(updated, first))
+        assertFalse(session.canLaunch(updated, second))
     }
 
     @Test fun removedAppsNeverReturnThroughAnOldOrderAndNewApprovalsAppend() {
