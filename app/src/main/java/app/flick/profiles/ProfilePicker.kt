@@ -1,6 +1,7 @@
 package app.flick.profiles
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -142,20 +143,25 @@ private fun ProfileAvatarChoice(profile: Profile, active: Boolean, modifier: Mod
                 val role = if (profile.child) "Child profile" else "Adult profile"
                 stateDescription = (if (active) "Active profile, " else "") + role + if (pinProtected) ", PIN protected" else ""
             }) {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { ProfileAvatar(profile, 72.dp) }
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Box(Modifier.size(72.dp)) {
+                    ProfileAvatar(profile, 72.dp)
+                    // Inset within the portrait circle, clear of the surrounding focus ring.
+                    if (active) Box(Modifier.align(Alignment.BottomEnd).padding(end = 10.dp, bottom = 10.dp)
+                        .size(14.dp).background(FlickColors.Foreground, CircleShape)
+                        .border(1.dp, FlickColors.Background, CircleShape), contentAlignment = Alignment.Center) {
+                        Icon(Icons.Default.Check, contentDescription = null, tint = FlickColors.FocusForeground,
+                            modifier = Modifier.size(10.dp))
+                    }
+                }
+            }
         }
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally)) {
-            Text(profile.name, style = MaterialTheme.typography.bodyLarge, maxLines = 1,
-                overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, modifier = Modifier.weight(1f, fill = false))
-            if (pinProtected) Icon(Icons.Default.Lock, contentDescription = null, tint = FlickColors.Secondary, modifier = Modifier.size(12.dp))
-        }
-        // Reserve the status row for every profile so focus never changes the layout.
-        Box(Modifier.fillMaxWidth().heightIn(min = 24.dp), contentAlignment = Alignment.Center) {
-            if (active) Row(verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(14.dp))
-                Text("Active", style = MaterialTheme.typography.bodySmall)
+        Box(Modifier.fillMaxWidth().heightIn(min = 34.dp), contentAlignment = Alignment.Center) {
+            Row(verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally)) {
+                Text(profile.name, style = MaterialTheme.typography.bodyLarge, maxLines = 1,
+                    overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, modifier = Modifier.weight(1f, fill = false))
+                if (pinProtected) Icon(Icons.Default.Lock, contentDescription = null, tint = FlickColors.Secondary, modifier = Modifier.size(12.dp))
             }
         }
     }
