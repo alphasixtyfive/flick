@@ -51,6 +51,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.stateDescription
 import app.flick.ui.icons.FlickIcons
+import app.flick.ui.theme.homeMetadataStyle
 import app.flick.wallpaper.WallpaperBackground
 import app.flick.wallpaper.WallpaperPhoto
 import kotlinx.coroutines.delay
@@ -63,6 +64,7 @@ internal sealed interface HomePanel {
     data object Wallpaper : HomePanel
     data object Weather : HomePanel
     data object HomeAssistantSetup : HomePanel
+    data object HomeText : HomePanel
     data class HomeEntities(val fromControls: Boolean = false) : HomePanel
     data object Integration : HomePanel
     data object Theme : HomePanel
@@ -176,6 +178,11 @@ fun FlickScreen(state: HomeState, actions: HomeActions) {
         if (state.message != null) { delay(6000); actions.dismissMessage() }
     }
     val fontScale = if (state.settings.largeText) 1.12f else 1f
+    val messageStyle = homeMetadataStyle(fontScale)
+    val homeText = if (panel == null && state.bridge.homeTextEnabled && state.bridge.paired &&
+        state.bridge.connection == app.flick.integration.BridgeConnection.Connected) {
+        state.homeText.visibleFor(profile.id, child, state.profileSession.generation)?.text
+    } else null
 
     LaunchedEffect(panel) {
         if (panel != null) {
@@ -267,44 +274,43 @@ fun FlickScreen(state: HomeState, actions: HomeActions) {
                 modifier = Modifier.fillMaxSize(),
             )
         }
-        Row(Modifier.fillMaxWidth().padding(horizontal = TvLayout.SafeHorizontal, vertical = TvLayout.SafeVertical),
-            verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.SpaceBetween) {
-            TvFocusSurface(
-                onClick = { openPanel(HomePanel.Profiles) }, shape = CircleShape,
-                onLongClick = if (child) null else ({ openSettings() }),
-                modifier = homeFocus("profile", startBoundary = true, endBoundary = lastTopAction == "profile")
-                    .alignBy { it.measuredHeight / 2 }
-                    .onPlaced { profilePlaced = true }.size(TvLayout.TopActionSize).semantics {
-                    contentDescription = profile.name
-                    stateDescription = "Active profile"
-                },
-            ) {
-                ProfileAvatar(profile, TvLayout.TopActionSize)
-            }
-            Row(Modifier.alignBy(ClockDigitsCentre), horizontalArrangement = Arrangement.spacedBy(24.dp), verticalAlignment = Alignment.Top) {
-                Row(Modifier.alignBy { it.measuredHeight / 2 }, horizontalArrangement = Arrangement.spacedBy(TvLayout.Gap),
-                    verticalAlignment = Alignment.CenterVertically) {
-                    if (!child && state.settings.showHomeAssistant && state.haConfiguration.configured) TvAction(
-                        label = "Home Assistant", icon = FlickIcons.HomeAssistant,
-                        modifier = homeFocus("home-assistant", endBoundary = lastTopAction == "home-assistant"),
-                        onClick = { openPanel(HomePanel.HomeAssistantControls) },
-                    )
-                    if (!child && state.settings.showSettings) TvAction(
-                        label = "Settings", icon = Icons.Default.Settings,
-                        modifier = homeFocus("settings", endBoundary = lastTopAction == "settings"),
-                        onClick = { openSettings() },
-                    )
-                    if (showNextWallpaper) TvAction(
-                        label = "Next wallpaper", icon = Icons.Default.PhotoLibrary,
-                        modifier = homeFocus("wallpaper", endBoundary = true), onClick = actions.rotateWallpaper,
-                    )
+        HomeHeader(Modifier.fillMaxWidth().padding(horizontal = TvLayout.SafeHorizontal, vertical = TvLayout.SafeVertical),
+            message = homeText, messageStyle = messageStyle,
+            clock = {
+                ClockWeather(state.settings.clock24, state.settings.showWeather,
+                    state.settings.weatherLocation != null, state.weather, fontScale)
+            }) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(TvLayout.Gap), verticalAlignment = Alignment.CenterVertically) {
+                TvFocusSurface(
+                    onClick = { openPanel(HomePanel.Profiles) }, shape = CircleShape,
+                    onLongClick = if (child) null else ({ openSettings() }),
+                    modifier = homeFocus("profile", startBoundary = true, endBoundary = lastTopAction == "profile")
+                        .onPlaced { profilePlaced = true }.size(TvLayout.TopActionSize).semantics {
+                        contentDescription = profile.name
+                        stateDescription = "Active profile"
+                    },
+                ) {
+                    ProfileAvatar(profile, TvLayout.TopActionSize)
                 }
-                ClockWeather(state.settings.clock24, state.settings.showWeather, state.settings.weatherLocation != null, state.weather, fontScale,
-                    modifier = Modifier.alignBy(ClockDigitsCentre))
+                if (!child && state.settings.showHomeAssistant && state.haConfiguration.configured) TvAction(
+                    label = "Home Assistant", icon = FlickIcons.HomeAssistant,
+                    modifier = homeFocus("home-assistant", endBoundary = lastTopAction == "home-assistant"),
+                    onClick = { openPanel(HomePanel.HomeAssistantControls) },
+                )
+                if (!child && state.settings.showSettings) TvAction(
+                    label = "Settings", icon = Icons.Default.Settings,
+                    modifier = homeFocus("settings", endBoundary = lastTopAction == "settings"),
+                    onClick = { openSettings() },
+                )
+                if (showNextWallpaper) TvAction(
+                    label = "Next wallpaper", icon = Icons.Default.PhotoLibrary,
+                    modifier = homeFocus("wallpaper", endBoundary = true), onClick = actions.rotateWallpaper,
+                )
             }
         }
 
-        Column(Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(start = TvLayout.SafeHorizontal, end = TvLayout.SafeHorizontal, bottom = 54.dp),
+        Column(Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(start = TvLayout.SafeHorizontal, end = TvLayout.SafeHorizontal, bottom = TvLayout.AppDockBottom),
             verticalArrangement = Arrangement.spacedBy(24.dp)) {
             if (!child && state.settings.showContinue && state.continueItems.isNotEmpty()) Column(
                 verticalArrangement = Arrangement.spacedBy(TvLayout.Gap),

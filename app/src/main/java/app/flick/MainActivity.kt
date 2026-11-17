@@ -181,6 +181,7 @@ class MainActivity : ComponentActivity() {
             }
         },
         setIntegrationEnabled = model::setIntegrationEnabled,
+        setHomeTextEnabled = model::setHomeTextEnabled,
         forgetIntegration = model::forgetIntegration,
         setNotificationsEnabled = model::setNotificationsEnabled,
         setLauncherManagement = model::setLauncherManagement,

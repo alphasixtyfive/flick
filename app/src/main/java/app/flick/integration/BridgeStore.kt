@@ -27,12 +27,14 @@ internal class BridgeStore(context: Context) {
         }
         return BridgeState(deviceId = id, enabled = preferences.getBoolean("enabled", false),
             notificationsEnabled = preferences.getBoolean("notifications", true),
-            allowManagement = preferences.getBoolean("management", false))
+            allowManagement = preferences.getBoolean("management", false),
+            homeTextEnabled = preferences.getBoolean("home_text", false))
     }
 
     fun setEnabled(value: Boolean) = saveFlag("enabled", value)
     fun setNotificationsEnabled(value: Boolean) = saveFlag("notifications", value)
     fun setAllowManagement(value: Boolean) = saveFlag("management", value)
+    fun setHomeTextEnabled(value: Boolean) = saveFlag("home_text", value)
     private fun saveFlag(name: String, value: Boolean) {
         preferences.commitOrRestore("Integration settings could not be saved") { putBoolean(name, value) }
     }

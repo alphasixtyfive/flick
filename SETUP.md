@@ -153,6 +153,21 @@ Android can restore an enabled, paired connection after process loss. After forc
 vendor power-management shutdown, open Flick again. Connection off pauses notifications; Unpair TV
 removes pairing. Ordinary light controls stay configured.
 
+### Home screen text
+
+1. Pair the TV, then enable Settings → Home Assistant → Home screen text on Flick.
+2. In Home Assistant, open Settings → Devices & services → Flick TV → Configure → Home screen text.
+3. Fill in Message with plain text or a template.
+
+Home Assistant renders the template; Flick displays one plain-text message centred at the top,
+up to 120 Unicode codepoints. Long output is shortened with an ellipsis. Empty output hides
+its text without moving the controls, clock or apps. Children cannot see the message unless explicitly allowed
+in Home Assistant, and it stays hidden on the profile chooser and PIN screen.
+The TV page shows one preview and an Edit in Home Assistant QR code. Scan it with your phone,
+choose your TV, then Configure → Home screen text. Edit Message in Home Assistant.
+See the [integration instructions](https://github.com/alphasixtyfive/flick-home-assistant#home-screen-text)
+for template examples and configuration.
+
 ## Themes
 
 Open Settings → Home screen → Theme. Choose Midnight, Graphite or Warm; the change applies immediately.

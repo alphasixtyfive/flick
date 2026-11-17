@@ -18,7 +18,7 @@ import kotlin.math.roundToInt
 
 /** Flatten the photo and contrast shading before Coil uploads the final image. */
 internal class WallpaperFrameTransformation(private val target: IntSize) : Transformation {
-    override val cacheKey = "flick-wallpaper-baseline-v1:${target.width}x${target.height}"
+    override val cacheKey = "flick-wallpaper-header-shade-v2:${target.width}x${target.height}"
 
     override suspend fun transform(input: Bitmap, size: Size): Bitmap = composeBitmap(target.width, target.height) { canvas ->
         drawFallback(canvas, target.width, target.height)
@@ -75,8 +75,8 @@ private fun drawShade(canvas: Canvas, width: Int, height: Int) {
     fun black(alpha: Float) = (alpha * 255).roundToInt().coerceIn(0, 255) shl 24
     val paint = Paint().apply {
         shader = LinearGradient(0f, 0f, 0f, height.toFloat(), intArrayOf(
-            black(.48f), black(0f), black(.86f),
-        ), null, Shader.TileMode.CLAMP)
+            black(.78f), black(.65f), black(0f), black(.86f),
+        ), floatArrayOf(0f, .16f, .46f, 1f), Shader.TileMode.CLAMP)
     }
     canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), paint)
 }

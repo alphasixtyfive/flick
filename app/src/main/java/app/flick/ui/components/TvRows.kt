@@ -83,9 +83,10 @@ private fun TvListRow(title: String, detail: String, icon: ImageVector?, modifie
 @Composable
 private fun TvRowContent(title: String, detail: String, icon: ImageVector?, modifier: Modifier = Modifier,
     trailing: @Composable RowScope.() -> Unit) {
-    Row(modifier.defaultMinSize(minHeight = TvLayout.RowHeight).padding(horizontal = 12.dp, vertical = 6.dp),
+    Row(modifier.defaultMinSize(minHeight = if (detail.isBlank()) TvLayout.RowHeight else TvLayout.TwoLineRowHeight)
+        .padding(horizontal = TvLayout.RowHorizontalPadding, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(TvLayout.Gap)) {
-        if (icon != null) Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp))
+        if (icon != null) Icon(icon, contentDescription = null, modifier = Modifier.size(TvLayout.RowIconSize))
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
             Text(title, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
             if (detail.isNotBlank()) Text(detail, color = LocalContentColor.current.copy(alpha = .74f),

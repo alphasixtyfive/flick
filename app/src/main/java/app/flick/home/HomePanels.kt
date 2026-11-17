@@ -16,6 +16,7 @@ import app.flick.homeassistant.HomeEntityPicker
 import app.flick.homeassistant.HomeAssistantControlsPanel
 import app.flick.integration.IntegrationPanel
 import app.flick.updates.UpdatePanel
+import app.flick.hometext.HomeTextPanel
 
 @Composable
 internal fun HomePanels(panel: HomePanel?, state: HomeState, actions: HomeActions,
@@ -56,12 +57,14 @@ internal fun HomePanels(panel: HomePanel?, state: HomeState, actions: HomeAction
             actions.chooseWallpaperFolder, actions.chooseWallpaperPhotos, onBack = { onPanel(HomePanel.Settings) })
         HomePanel.HomeAssistantSetup -> HomeAssistantSetupPanel(state.haConfiguration, state.haConnectionState, state.haBusy, actions.configureHomeAssistant, actions.retryHomeAssistant, onBack = { onPanel(HomePanel.Settings) },
             onChooseControls = { actions.discoverHomeEntities(); onPanel(HomePanel.HomeEntities()) },
-            onIntegration = { onPanel(HomePanel.Integration) },
+            onIntegration = { onPanel(HomePanel.Integration) }, onHomeText = { onPanel(HomePanel.HomeText) },
             connectionDetail = when {
                 !state.bridge.paired -> "Not paired"
                 !state.bridge.enabled -> "Paused. Pairing is saved."
                 else -> state.bridge.connection.label
             })
+        HomePanel.HomeText -> HomeTextPanel(state, actions,
+            onIntegration = { onPanel(HomePanel.Integration) }, onBack = { onPanel(HomePanel.HomeAssistantSetup) })
         HomePanel.Integration -> IntegrationPanel(state, actions, onBack = { onPanel(HomePanel.HomeAssistantSetup) })
         HomePanel.Updates -> UpdatePanel(state.update, actions.checkUpdates, actions.downloadUpdate,
             actions.installUpdate, actions.cancelUpdate, onClose = { actions.cancelUpdate(); onPanel(HomePanel.Settings) })

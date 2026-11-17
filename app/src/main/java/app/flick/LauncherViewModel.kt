@@ -97,6 +97,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch { homeAssistant.connectionState.collect { value -> mutable.update { it.copy(haConnectionState = value) } } }
         viewModelScope.launch { homeAssistant.controls.collect { value -> mutable.update { it.copy(homeControls = value) } } }
         viewModelScope.launch { runtime.bridge.state.collect { value -> mutable.update { it.copy(bridge = value) } } }
+        viewModelScope.launch { runtime.bridge.homeText.collect { value -> mutable.update { it.copy(homeText = value) } } }
         viewModelScope.launch { runtime.notifications.state.collect { value -> mutable.update { it.copy(notifications = value) } } }
         viewModelScope.launch { wallpapers.settings.collect { value -> mutable.update { it.copy(wallpaperSettings = value) } } }
         viewModelScope.launch { wallpapers.current.collect { value -> mutable.update { it.copy(wallpaperUri = value?.uri) } } }
@@ -303,6 +304,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         runtime.bridge.setEnabled(enabled)
         runtime.notifications.enableBackground(enabled)
     } }
+    fun setHomeTextEnabled(enabled: Boolean) { privilegedTask { runtime.bridge.setHomeTextEnabled(enabled) } }
     fun setNotificationsEnabled(enabled: Boolean) { privilegedTask { runtime.bridge.setNotificationsEnabled(enabled) } }
     fun setLauncherManagement(enabled: Boolean) { privilegedTask { runtime.bridge.setAllowManagement(enabled) } }
     fun clearProfileError() { mutable.update { it.copy(profileError = null, profileErrorTarget = null) } }

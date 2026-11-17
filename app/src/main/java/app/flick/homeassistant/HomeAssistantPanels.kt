@@ -2,10 +2,12 @@ package app.flick.homeassistant
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.MaterialTheme
@@ -17,6 +19,7 @@ import app.flick.ui.components.TvSettingRow
 import app.flick.ui.components.TvStatusRow
 import app.flick.ui.icons.FlickIcons
 import app.flick.ui.theme.FlickColors
+import app.flick.ui.theme.TvLayout
 
 @Composable
 internal fun HomeAssistantControlsPanel(controls: List<HaControl>, connectionState: HaConnectionState,
@@ -69,7 +72,7 @@ internal fun HomeAssistantControlsPanel(controls: List<HaControl>, connectionSta
 @Composable
 internal fun HomeAssistantSetupPanel(configuration: HaConfiguration, connectionState: HaConnectionState, busy: Boolean,
     onConfigure: (String, String) -> Unit, onRetry: () -> Unit, onBack: () -> Unit, onChooseControls: () -> Unit,
-    onIntegration: () -> Unit, connectionDetail: String) {
+    onIntegration: () -> Unit, onHomeText: () -> Unit, connectionDetail: String) {
     var url by remember { mutableStateOf(configuration.url) }
     var token by remember { mutableStateOf("") }
     LaunchedEffect(configuration.url, configuration.configured) {
@@ -77,7 +80,8 @@ internal fun HomeAssistantSetupPanel(configuration: HaConfiguration, connectionS
     }
     TvPanel("Home Assistant", onBack = onBack, focusKey = configuration.configured to connectionState) {
         if (configuration.configured) {
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Column(Modifier.padding(start = TvLayout.RowTextInset, end = TvLayout.RowHorizontalPadding),
+                verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(connectionState.label, style = MaterialTheme.typography.bodySmall)
                 Text(configuration.url, style = MaterialTheme.typography.bodySmall,
                     color = FlickColors.Secondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -102,6 +106,8 @@ internal fun HomeAssistantSetupPanel(configuration: HaConfiguration, connectionS
             Text("Use a separate, non-admin account. In its Home Assistant profile, open Security and create a long-lived access token. It stays private on this TV.",
                 style = MaterialTheme.typography.bodySmall, color = FlickColors.Secondary)
         }
+        TvSettingRow("Home screen text", icon = Icons.Default.Info,
+            onClick = onHomeText)
         if (configuration.configured) TvSettingRow("Disconnect", icon = Icons.Default.LinkOff,
             onClick = { if (!busy) onConfigure("", "") })
     }

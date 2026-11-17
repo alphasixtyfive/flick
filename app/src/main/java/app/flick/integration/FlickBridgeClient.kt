@@ -6,6 +6,7 @@ import app.flick.homeassistant.HaCredentialStore
 import app.flick.homeassistant.HaCredentials
 import app.flick.homeassistant.HaPolicy
 import app.flick.platform.closeAsync
+import app.flick.hometext.*
 import java.security.SecureRandom
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
@@ -18,6 +19,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import okhttp3.OkHttpClient
@@ -43,6 +48,11 @@ class FlickBridgeClient(
         .followRedirects(false).followSslRedirects(false).retryOnConnectionFailure(false).build()
     private val mutable = MutableStateFlow(BridgeState())
     val state: StateFlow<BridgeState> = mutable.asStateFlow()
+    private val homeTextLock = Any()
+    private val homeTextContext = MutableStateFlow<HomeTextContext?>(null)
+    private val mutableHomeText = MutableStateFlow(HomeTextState())
+    val homeText: StateFlow<HomeTextState> = mutableHomeText.asStateFlow()
+    private var homeTextGeneration = 0L
     private val initialized = CompletableDeferred<Unit>()
     private val changes = Mutex()
     private val connectionLock = Any()
@@ -63,16 +73,39 @@ class FlickBridgeClient(
         }
     }
 
+    /** Authority and foreground changes clear text before a socket callback can publish it again. */
+    fun setHomeTextProfile(profile: HomeTextProfile?) = synchronized(homeTextLock) {
+        if (homeTextContext.value?.profile == profile) return@synchronized
+        homeTextGeneration++
+        homeTextContext.value = profile?.let { HomeTextContext(it, homeTextGeneration) }
+        clearHomeText()
+    }
+
+    private fun clearHomeText() = synchronized(homeTextLock) {
+        mutableHomeText.value = HomeTextState(homeTextContext.value,
+            if (state.value.homeTextEnabled) HomeTextStatus.Waiting else HomeTextStatus.Disabled)
+    }
+
     suspend fun setEnabled(value: Boolean) = change { store.setEnabled(value) }
+    suspend fun setHomeTextEnabled(value: Boolean) = change(reconnect = false) { store.setHomeTextEnabled(value) }
     suspend fun setNotificationsEnabled(value: Boolean) = change { store.setNotificationsEnabled(value) }
     suspend fun setAllowManagement(value: Boolean) = change { store.setAllowManagement(value) }
-    private suspend fun change(write: () -> Unit) = withContext(Dispatchers.IO) {
+    private suspend fun change(reconnect: Boolean = true, write: () -> Unit) = withContext(Dispatchers.IO) {
         ready(); changes.withLock {
             write()
             val saved = store.state()
+            val homeTextChanged = saved.homeTextEnabled != state.value.homeTextEnabled
             mutable.update { saved.copy(paired = it.paired, pairingCode = it.pairingCode,
                 pairingExpiresAtMillis = it.pairingExpiresAtMillis, connection = it.connection) }
-            reconnectLocked()
+            synchronized(homeTextLock) {
+                // Even a fast Off/On pair must request a fresh snapshot, not revive the old subscription.
+                if (homeTextChanged) homeTextContext.value?.let {
+                    homeTextGeneration++
+                    homeTextContext.value = it.copy(generation = homeTextGeneration)
+                }
+                clearHomeText()
+            }
+            if (reconnect) reconnectLocked()
         }
     }
 
@@ -176,6 +209,7 @@ class FlickBridgeClient(
 
     private suspend fun stopLocked() {
         synchronized(connectionLock) { generation++; active = null }
+        clearHomeText()
         session?.cancelAndJoin(); session = null
     }
 
@@ -189,6 +223,32 @@ class FlickBridgeClient(
         val connected = AtomicBoolean(false)
         val alive = AtomicBoolean(true)
         val connection = Connection(epoch, identity, ids, alive) { socket.get() }
+        val homeText = HomeTextSubscription(
+            subscribe = { value -> connection.send("flick_tv/home_text", JSONObject()
+                .put("profile_id", value.profile.id).put("profile_generation", value.generation)) },
+            unsubscribe = connection::unsubscribe,
+            publish = { value ->
+                synchronized(connectionLock) {
+                    if (connection.isCurrent()) synchronized(homeTextLock) {
+                        if (state.value.homeTextEnabled && value.context == homeTextContext.value) {
+                            mutableHomeText.value = value
+                        }
+                    }
+                }
+            },
+        )
+        var homeTextTimeout: Job? = null
+        val homeTextObserver = launch {
+            combine(homeTextContext, state.map {
+                it.homeTextEnabled && it.paired && it.connection == BridgeConnection.Connected
+            }.distinctUntilChanged()) { value, available -> value.takeIf { available } }
+                .distinctUntilChanged().collect { value ->
+                    homeTextTimeout?.cancel()
+                    homeText.update(value)?.let { id ->
+                        homeTextTimeout = launch { delay(10_000); homeText.timeout(id) }
+                    }
+                }
+        }
         var heartbeat: Job? = null
         var statusDeadline: Job? = null
         val consumer = launch {
@@ -229,6 +289,7 @@ class FlickBridgeClient(
                         BridgeStatusAcks.Result.Rejected -> { webSocket.cancel(); ended.complete(Unit); return }
                         BridgeStatusAcks.Result.Ignored -> Unit
                     }
+                    if (homeText.handle(frame)) return
                     when (frame.optString("type")) {
                         "auth_required" -> webSocket.send(JSONObject().put("type", "auth").put("access_token", credentials.token).toString())
                         "auth_invalid" -> { subscribed.completeExceptionally(SignInRejected()); ended.complete(Unit) }
@@ -303,9 +364,11 @@ class FlickBridgeClient(
             System.nanoTime() - subscribedAt >= 30_000_000_000L
         } finally {
             synchronized(connectionLock) {
+                if (generation == epoch) clearHomeText()
                 alive.set(false)
                 if (active === connection) active = null
             }
+            homeTextObserver.cancel(); homeTextTimeout?.cancel(); homeText.close()
             queue.close(); consumer.cancel(); heartbeat?.cancel(); statusDeadline?.cancel(); socket.getAndSet(null)?.cancel()
         }
     }
@@ -362,6 +425,12 @@ class FlickBridgeClient(
             socket()?.cancel()
             null
         }
+        fun unsubscribe(subscription: Int): Unit = synchronized(connectionLock) {
+            if (!isCurrent()) return@synchronized
+            val frame = JSONObject().put("id", ids.incrementAndGet()).put("type", "unsubscribe_events")
+                .put("subscription", subscription)
+            if (socket()?.send(BridgeProtocol.encoded(frame)) != true) socket()?.cancel()
+        }
     }
     private fun updateConnection(epoch: Long, connection: BridgeConnection) = synchronized(connectionLock) {
         if (!closed && generation == epoch) mutable.update { it.copy(connection = connection) }
@@ -372,6 +441,7 @@ class FlickBridgeClient(
         synchronized(connectionLock) {
             if (closed) return
             closed = true; generation++; active = null
+            clearHomeText()
         }
         initialized.complete(Unit)
         client.closeAsync {

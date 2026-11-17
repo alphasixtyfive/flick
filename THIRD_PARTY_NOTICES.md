@@ -10,6 +10,12 @@ Source: [Google Sans Flex v5.000](https://github.com/googlefonts/googlesans-flex
 
 The app's AndroidX, Kotlin, Coil and OkHttp dependencies retain their respective licences.
 
+## ZXing
+
+The setup QR code uses ZXing Core 3.5.4, distributed under the Apache License 2.0.
+Source: https://github.com/zxing/zxing/tree/zxing-3.5.4.
+The Apache licence is bundled with the app.
+
 ## Home Assistant logo
 
 The Home Assistant logomark comes from the official Home Assistant assets repository.

@@ -109,7 +109,7 @@ fun FlickTheme(largeText: Boolean = false, appearance: AppearanceSettings = Appe
 
 private val LocalOverlayType = compositionLocalOf { false }
 
-/** Menus use a quieter type scale than the home screen, including nested editors. */
+/** TV menu typography is shared by panels, dialogs and nested editors. */
 @Composable
 internal fun TvOverlayTheme(content: @Composable () -> Unit) {
     if (LocalOverlayType.current) { content(); return }
@@ -118,10 +118,11 @@ internal fun TvOverlayTheme(content: @Composable () -> Unit) {
         val scale = current.bodyLarge.fontSize.value / 18f
         fun TextStyle.size(size: Int, line: Int) = copy(fontSize = size.sp * scale, lineHeight = line.sp * scale)
         current.copy(
-            titleLarge = current.titleLarge.size(20, 26), titleMedium = current.titleMedium.size(15, 20),
+            titleLarge = current.titleLarge.size(22, 28).copy(fontWeight = FontWeight.Normal),
+            titleMedium = current.titleMedium.size(16, 24),
             titleSmall = current.titleSmall.size(14, 20), bodyLarge = current.bodyLarge.size(14, 20),
-            bodyMedium = current.bodyMedium.size(13, 18), bodySmall = current.bodySmall.size(11, 16),
-            labelLarge = current.labelLarge.size(13, 18), labelMedium = current.labelMedium.size(11, 16),
+            bodyMedium = current.bodyMedium.size(14, 20), bodySmall = current.bodySmall.size(12, 16),
+            labelLarge = current.labelLarge.size(14, 20), labelMedium = current.labelMedium.size(12, 16),
             labelSmall = current.labelSmall.size(11, 16),
         )
     }

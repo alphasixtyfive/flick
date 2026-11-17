@@ -30,8 +30,8 @@ internal fun IntegrationPanel(state: HomeState, actions: HomeActions, onBack: ()
     TvPanel(page.title, onBack = back, focusKey = page to bridge.paired) {
         when (page) {
             IntegrationPage.Overview -> {
-                IntegrationDetail(if (bridge.paired && !bridge.enabled) "Paused. Pairing is saved." else bridge.connection.label)
                 if (!bridge.paired) {
+                    IntegrationDetail(bridge.connection.label)
                     IntegrationDetail("Add Flick in Home Assistant to send notifications and manage this TV. Light controls work without it.")
                     if (state.haConfiguration.configured) {
                         val code = bridge.pairingCode
@@ -48,7 +48,7 @@ internal fun IntegrationPanel(state: HomeState, actions: HomeActions, onBack: ()
                         onClick = { actions.openProjectLink("https://github.com/alphasixtyfive/flick#home-assistant") })
                 } else {
                     TvSettingRow("Enable TV connection", checked = bridge.enabled, icon = Icons.Default.Link,
-                        detail = if (bridge.enabled) "Paired with Home Assistant" else "Paused. Pairing is saved.",
+                        detail = if (bridge.enabled) bridge.connection.label else "Paused. Pairing is saved.",
                         onClick = { actions.setIntegrationEnabled(!bridge.enabled) })
                     TvSettingRow("Notifications", detail = when {
                         !bridge.notificationsEnabled -> "Off"
@@ -80,7 +80,7 @@ internal fun IntegrationPanel(state: HomeState, actions: HomeActions, onBack: ()
         }
     }
     if (confirmForget) TvDialog("Unpair this TV?", onDismiss = { confirmForget = false }) {
-        Text("Stop notifications and launcher management. Your light controls stay connected.",
+        Text("Stop Home screen text, notifications and launcher management. Your light controls stay connected.",
             style = MaterialTheme.typography.bodyMedium)
         TvSettingRow("Cancel", onClick = { confirmForget = false })
         TvSettingRow("Unpair TV", onClick = { confirmForget = false; actions.forgetIntegration() })

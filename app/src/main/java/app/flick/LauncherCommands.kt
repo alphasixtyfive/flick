@@ -29,7 +29,7 @@ internal class LauncherCommands(private val runtime: FlickRuntime) {
         return JSONObject().put("version", BuildConfig.VERSION_NAME)
             .put("profile", publicProfile(profile, details = false)).put("profiles", publicProfiles(details = false))
             .put("capabilities", JSONArray(buildList {
-                add("profiles"); add("wallpapers"); add("themes")
+                add("profiles"); add("wallpapers"); add("themes"); add("home_text")
                 if (runtime.notifications.state.value.overlayAllowed) add("notifications")
             }))
     }

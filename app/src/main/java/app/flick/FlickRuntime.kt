@@ -10,6 +10,7 @@ import app.flick.apps.AndroidCatalogue
 import app.flick.homeassistant.HomeAssistantRepository
 import app.flick.integration.BridgeCommand
 import app.flick.integration.FlickBridgeClient
+import app.flick.hometext.HomeTextProfile
 import app.flick.notifications.NotificationController
 import app.flick.platform.NavigationSounds
 import app.flick.profiles.ProfileSecurity
@@ -50,7 +51,10 @@ class FlickRuntime(context: Context) {
     val privilegedJobs = ConcurrentHashMap.newKeySet<Job>()
     internal var profileSelection: Job? = null
     @Volatile var switchingProfile = false
-    private var visible = false
+    private val visibleState = MutableStateFlow(false)
+    private var visible: Boolean
+        get() = visibleState.value
+        set(value) { visibleState.value = value }
     val updates by lazy { UpdateController(context, scope, canInstall = { visible && canManage() && !switchingProfile }) }
     private val power = context.getSystemService(PowerManager::class.java)
     private val commands = LauncherCommands(this)
@@ -78,6 +82,13 @@ class FlickRuntime(context: Context) {
             context.applicationContext.registerReceiver(screenOff, IntentFilter(Intent.ACTION_SCREEN_OFF))
         }
         scope.launch { store.state.collect { reconcileProfileSession() } }
+        scope.launch {
+            combine(store.state, profileSession.state, visibleState, store.requiresRecovery) { settings, session, visible, recovery ->
+                if (!visible || recovery) null else profileSession.profile(settings)?.let {
+                    HomeTextProfile(it.id, it.child, session.generation)
+                }
+            }.distinctUntilChanged().collect(bridge::setHomeTextProfile)
+        }
         scope.launch { homeAssistant.displayPowerInterruptions.drop(1).collect { revokeProfileSession() } }
         scope.launch {
             homeAssistant.credentialRevision.drop(1).collect {

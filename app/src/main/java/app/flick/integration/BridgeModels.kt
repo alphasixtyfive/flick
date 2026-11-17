@@ -14,6 +14,7 @@ data class BridgeState(
     val enabled: Boolean = false,
     val notificationsEnabled: Boolean = true,
     val allowManagement: Boolean = false,
+    val homeTextEnabled: Boolean = false,
     val paired: Boolean = false,
     val pairingCode: String? = null,
     val pairingExpiresAtMillis: Long? = null,

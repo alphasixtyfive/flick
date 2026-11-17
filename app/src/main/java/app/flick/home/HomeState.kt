@@ -14,6 +14,7 @@ import app.flick.wallpaper.WallpaperSettings
 import app.flick.weather.PlaceResult
 import app.flick.weather.WeatherReading
 import app.flick.integration.BridgeState
+import app.flick.hometext.HomeTextState
 import app.flick.notifications.NotificationState
 import app.flick.BuildConfig
 import app.flick.updates.UpdateState
@@ -36,6 +37,7 @@ data class HomeState(
     val haEntities: List<HaEntity> = emptyList(),
     val haBusy: Boolean = false,
     val bridge: BridgeState = BridgeState(),
+    val homeText: HomeTextState = HomeTextState(),
     val notifications: NotificationState = NotificationState(),
     val haConnectionState: HaConnectionState = HaConnectionState.Unknown,
     val haDiscoveryLoaded: Boolean = false,
@@ -86,6 +88,7 @@ data class HomeActions(
     val pairHomeAssistant: () -> Unit,
     val forgetIntegration: () -> Unit,
     val setIntegrationEnabled: (Boolean) -> Unit,
+    val setHomeTextEnabled: (Boolean) -> Unit,
     val setNotificationsEnabled: (Boolean) -> Unit,
     val setLauncherManagement: (Boolean) -> Unit,
     val requestOverlayPermission: () -> Unit,

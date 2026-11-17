@@ -49,7 +49,7 @@ The TV replies through `flick_tv/result`, including `device_id`, `device_secret`
 
 Proactive `flick_tv/status` messages use flat fields `version`, `profile`, `profiles`, optional
 `current_app`, and `capabilities`. Profile summaries contain only `id`, `name` and `child`.
-Flick 0.2.22+ reconnects if a status update is rejected or remains unacknowledged for ten seconds;
+Flick reconnects if a status update is rejected or remains unacknowledged for ten seconds;
 WebSocket ping alone cannot detect a missing logical TV session after an integration reload.
 The explicit `list_profiles` response may also contain `allowed_apps` and online avatar URLs.
 Neither response includes PINs, verifiers, salts or document grants.
@@ -58,6 +58,34 @@ The reported profile is the selected/resume account, including while the startup
 It is not an unlocked indicator. Protocol 1 has no session-authorization field; the TV independently
 requires a current adult session for launcher management. Notifications may still arrive while locked,
 but notification action buttons require an adult session.
+
+## Home screen text
+
+Home screen text uses the optional `flick_tv/home_text` subscription
+on the existing authenticated socket. It has a separate WebSocket message ID, with
+`device_id`, `device_secret`, `profile_id` and a fresh positive integer `profile_generation`.
+The server acknowledges it with the standard success result and sends exactly these fields:
+
+| Field | Format |
+| --- | --- |
+| `profile_id`, `profile_generation` | Requested profile context |
+| `revision` | Positive integer, increasing within this subscription |
+| `text` | Literal single-line message, at most 120 Unicode codepoints; empty hides it |
+| `show_for_children` | Boolean, false unless explicitly enabled by an administrator |
+
+Flick centres the message in the header. Long text is ellipsized to fit between the controls
+and clock; if no space is available, the message is hidden. Text changes do not move other
+Home screen elements. The message does not receive remote focus.
+
+The TV does not evaluate templates or interpret HTML. It clears text on profile/authority changes,
+backgrounding, disconnect or disable, and rejects old subscription IDs, generations and revisions.
+Home Assistant independently checks the current profile and child visibility. The template has
+one tracker and independent error handling; changes coalesce into at most one update per second. The TV
+unsubscribes with `unsubscribe_events`. An unsupported subscription's `unknown_command` response affects
+only this feature; the main control/notification subscription continues.
+
+Configure Message in Home Assistant. See the
+[integration setup](https://github.com/alphasixtyfive/flick-home-assistant#home-screen-text).
 
 ## Notifications and bounds
 

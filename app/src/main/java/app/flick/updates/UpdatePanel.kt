@@ -1,6 +1,8 @@
 package app.flick.updates
 
 import android.text.format.Formatter
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Download
@@ -8,11 +10,13 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import app.flick.ui.components.TvPanel
 import app.flick.ui.components.TvSettingRow
+import app.flick.ui.theme.TvLayout
 
 @Composable
 fun UpdatePanel(state: UpdateState, onCheck: () -> Unit, onDownload: () -> Unit, onInstall: () -> Unit,
@@ -30,8 +34,10 @@ fun UpdatePanel(state: UpdateState, onCheck: () -> Unit, onDownload: () -> Unit,
         UpdatePhase.Installing -> "Confirm the update in Android’s installer."
     }
     TvPanel("Updates", onBack = onClose, focusKey = state.phase) {
-        Text("Installed ${state.currentVersion}", style = MaterialTheme.typography.bodySmall)
-        status?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
+        Column(Modifier.padding(start = TvLayout.RowTextInset, end = TvLayout.RowHorizontalPadding)) {
+            Text("Installed ${state.currentVersion}", style = MaterialTheme.typography.bodySmall)
+            status?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
+        }
         when (state.phase) {
             UpdatePhase.Idle, UpdatePhase.Current -> TvSettingRow("Check again", icon = Icons.Default.Refresh, onClick = onCheck)
             UpdatePhase.Checking, UpdatePhase.Verifying -> {
