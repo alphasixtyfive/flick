@@ -6,7 +6,6 @@ import android.net.Uri
 import android.os.CancellationSignal
 import androidx.core.content.FileProvider
 import app.flick.settings.LauncherSettings
-import app.flick.settings.SetupImport
 import app.flick.wallpaper.BuiltInWallpapers
 import app.flick.wallpaper.WallpaperSettings
 import java.io.Closeable
@@ -34,7 +33,7 @@ class RestoreDraft internal constructor(internal val manifest: BackupManifest, i
     override fun toString() = "RestoreDraft(privateData=redacted)"
 }
 
-class ResolvedBackup internal constructor(val setup: SetupImport, val mediaDirectory: File) : Closeable {
+class ResolvedBackup internal constructor(val preferences: BackupPreferences, val mediaDirectory: File) : Closeable {
     private var retained = false
     fun keepMedia() { retained = true }
     override fun close() { if (!retained) mediaDirectory.deleteRecursively() }
@@ -70,24 +69,10 @@ class BackupRepository(context: Context) {
             openDocument(uri, signal) { input -> source.outputStream().use {
                 BackupArchive.copyBounded(input, it, BackupArchive.MAX_ARCHIVE_BYTES, signal::throwIfCanceled)
             } }
-            val zip = source.inputStream().use { it.read() == 0x50 && it.read() == 0x4b }
-            val manifest = if (zip) source.inputStream().use {
+            val manifest = source.inputStream().use {
                 BackupArchive.read(it, File(directory, "media"), ::validateImage, signal::throwIfCanceled)
-            } else {
-                require(source.length() <= BackupManifest.MAX_MANIFEST_BYTES) { "Setup file is too large" }
-                val images = Images(directory, signal, omitUnavailable = true)
-                BackupManifest.fromLegacy(BackupArchive.decodeUtf8(source.readBytes()), images::portable, { images.files.keys })
             }
             source.delete()
-            RestoreDraft(manifest, directory, manifest.summary(folderAvailable(manifest.folderUri)))
-        } catch (failure: Exception) { directory.deleteRecursively(); throw failure }
-    }
-
-    suspend fun readLegacy(raw: String): RestoreDraft = runWork { signal ->
-        val directory = newStaging()
-        try {
-            val images = Images(directory, signal, omitUnavailable = true)
-            val manifest = BackupManifest.fromLegacy(raw, images::portable, { images.files.keys })
             RestoreDraft(manifest, directory, manifest.summary(folderAvailable(manifest.folderUri)))
         } catch (failure: Exception) { directory.deleteRecursively(); throw failure }
     }
@@ -116,10 +101,10 @@ class BackupRepository(context: Context) {
                     BackupArchive.copyBounded(input, output, BackupArchive.MAX_IMAGE_BYTES, signal::throwIfCanceled)
                 } }
             }
-            val setup = draft.manifest.resolve(current, parentPin, { id ->
+            val preferences = draft.manifest.resolve(current, parentPin, { id ->
                 FileProvider.getUriForFile(app, "${app.packageName}.backup.media", File(directory, id)).toString()
             }, folderAvailable(draft.manifest.folderUri))
-            ResolvedBackup(setup, directory)
+            ResolvedBackup(preferences, directory)
         } catch (failure: Exception) { directory.deleteRecursively(); throw failure }
     }
 
@@ -164,8 +149,7 @@ class BackupRepository(context: Context) {
         descriptor.use { return it.createInputStream().use(use) }
     }
 
-    private inner class Images(private val directory: File, private val signal: CancellationSignal,
-        private val omitUnavailable: Boolean = false) {
+    private inner class Images(private val directory: File, private val signal: CancellationSignal) {
         val files = linkedMapOf<String, File>()
         private val references = mutableMapOf<String, String?>()
         private var total = 0L
@@ -177,8 +161,7 @@ class BackupRepository(context: Context) {
             val result = try { embed(Uri.parse(value)) }
             catch (failure: Exception) {
                 signal.throwIfCanceled()
-                if (!omitUnavailable) throw IOException("A selected profile photo or wallpaper cannot be read. Choose it again before backing up.", failure)
-                null
+                throw IOException("A selected profile photo or wallpaper cannot be read. Choose it again before backing up.", failure)
             }
             references[value] = result
             return result

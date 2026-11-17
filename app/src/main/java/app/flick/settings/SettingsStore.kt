@@ -17,7 +17,7 @@ class SettingsStore(context: Context, private val startupRecoveryFailed: Boolean
     private val preferences = context.getSharedPreferences("flick_native", Context.MODE_PRIVATE)
     private val installation = context.getSharedPreferences("flick_installation", Context.MODE_PRIVATE)
     private val previouslyInitialized = installation.contains("initialized") ||
-        preferences.all.isNotEmpty() || legacyConfigurationExists(context)
+        preferences.all.isNotEmpty() || existingPrivateConfigurationExists(context)
     private val mutex = Mutex()
     private val mutableRecovery = MutableStateFlow(false)
     val requiresRecovery = mutableRecovery.asStateFlow()
@@ -44,8 +44,8 @@ class SettingsStore(context: Context, private val startupRecoveryFailed: Boolean
         }
     }
 
-    /** Earlier versions could save account or pairing data before ever writing launcher settings. */
-    private fun legacyConfigurationExists(context: Context): Boolean = listOf(
+    /** Existing private data means missing launcher settings must enter recovery, never default adult setup. */
+    private fun existingPrivateConfigurationExists(context: Context): Boolean = listOf(
         "flick_home_assistant" to "url", "flick_integration" to "device_id",
         "wallpapers" to "settings", "flick_profile_security" to "failures",
     ).any { (store, key) -> context.getSharedPreferences(store, Context.MODE_PRIVATE).contains(key) }

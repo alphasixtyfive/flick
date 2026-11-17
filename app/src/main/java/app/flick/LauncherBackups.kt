@@ -50,7 +50,6 @@ internal class LauncherBackups(context: Context, private val runtime: FlickRunti
     }
 
     suspend fun read(uri: Uri) = operation { stage(repository.read(uri)) }
-    suspend fun readLegacy(raw: String) = operation { stage(repository.readLegacy(raw)) }
 
     private suspend fun stage(next: RestoreDraft) {
         val oldPrepared = prepared

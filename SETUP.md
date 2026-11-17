@@ -168,7 +168,6 @@ Passwords, parent PIN verifiers, Home Assistant credentials and pairing are excl
 Restore previews the contents before replacing your launcher setup. Existing adult profiles keep their
 local PINs; restoring protected profiles onto another TV asks for a new four-digit parent PIN. The TV's
 Home Assistant connection and room controls stay unchanged. Photo folders may need to be selected again.
-Older setup JSON is accepted through the same restore preview; its connection and PIN fields are ignored.
 See [backup format and limits](docs/backup.md).
 
 For a failed photo or network connection, adjust that feature in Settings. If stored launcher settings

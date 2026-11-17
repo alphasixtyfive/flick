@@ -22,7 +22,6 @@ class BackupManifestTest {
         assertFalse(manifest.needsParentPin(settings))
         val resolved = manifest.resolve(settings, null, { error("No images expected") }, false)
         assertEquals(adult.pinHash, resolved.settings.profiles.first().pinHash)
-        assertNull(resolved.homeAssistant)
     }
 
     @Test fun unknownAdultsNeedANewPinAndCannotReuseAChildsProtection() {
@@ -33,21 +32,38 @@ class BackupManifestTest {
         assertThrows(IllegalArgumentException::class.java) { manifest.resolve(current, "12345", { it }, false) }
     }
 
-    @Test fun legacyCredentialsAreDiscardedButLocalPinIsRetained() {
-        val legacy = JSONObject().put("settings", app.flick.settings.SettingsCodec.write(settings))
-            .put("homeAssistant", JSONObject().put("url", "https://example.invalid").put("token", "legacy-secret"))
-        val manifest = BackupManifest.fromLegacy(legacy.toString(), { it }, { emptySet() })
-        assertFalse(manifest.encoded().contains("legacy-secret"))
-        assertFalse(manifest.encoded().contains("homeAssistant\""))
-        assertNull(manifest.resolve(settings, null, { it }, false).homeAssistant)
-        assertEquals(adult.pinHash, manifest.resolve(settings, null, { it }, false).settings.profiles.first().pinHash)
+    @Test fun connectionCredentialsAreRejectedInsteadOfImported() {
+        val manifest = BackupManifest.create(settings, WallpaperSettings(), { it }, { emptySet() })
+        val invalid = JSONObject(manifest.encoded())
+        invalid.getJSONObject("settings").put("homeAssistant", JSONObject()
+            .put("url", "https://example.invalid").put("token", "not-a-real-secret"))
+        assertThrows(IllegalArgumentException::class.java) { BackupManifest.parse(invalid.toString()) }
     }
 
-    @Test fun rolesAreExplicitEvenForLegacyProfiles() {
-        val legacy = """{"settings":{"profiles":[{"id":"person","name":"Person"}]}}"""
-        assertThrows(IllegalArgumentException::class.java) { BackupManifest.fromLegacy(legacy, { it }, { emptySet() }) }
-        val manifest = BackupManifest.fromLegacy("""{"settings":{"clock24":true}}""", { it }, { emptySet() })
-        assertEquals(1, manifest.summary(false).profileCount)
+    @Test fun profileRolesMustRemainExplicit() {
+        val manifest = BackupManifest.create(settings, WallpaperSettings(), { it }, { emptySet() })
+        for (role in listOf(null, "adult")) {
+            val invalid = JSONObject(manifest.encoded())
+            val profile = invalid.getJSONObject("settings").getJSONArray("profiles").getJSONObject(0)
+            if (role == null) profile.remove("child") else profile.put("child", role)
+            assertThrows(IllegalArgumentException::class.java) { BackupManifest.parse(invalid.toString()) }
+        }
+    }
+
+    @Test fun quotedBracesAndWallpaperOptionsSurviveResolution() {
+        val original = settings.copy(profiles = settings.profiles.map { it.copy(name = "A [quiet] {view}") })
+        val photos = WallpaperSettings(listOf(WallpaperPhoto("https://example.invalid/image.jpg")),
+            intervalSeconds = 450, dimAmount = .3f, shuffle = false)
+        val manifest = BackupManifest.create(original, photos, { it }, { emptySet() })
+        val restored = BackupManifest.parse(manifest.encoded()).resolve(original, null, { it }, false)
+        assertEquals(original, restored.settings)
+        assertEquals(photos, restored.wallpaper)
+        assertFalse(restored.toString().contains("A [quiet]"))
+    }
+
+    @Test fun excessiveJsonDepthIsRejectedBeforeParsing() {
+        val nested = "[".repeat(17) + "0" + "]".repeat(17)
+        assertThrows(IllegalArgumentException::class.java) { BackupManifest.parse(nested) }
     }
 
     @Test fun folderGrantIsNotAssumedToTransferAndIndividualPhotosSurvive() {

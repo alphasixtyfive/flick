@@ -18,8 +18,8 @@ internal class BackupTransactions(private val context: Context) {
             withContext(Dispatchers.IO) {
                 journal.record(snapshot(), restored.mediaDirectory)
                 try {
-                    restored.setup.wallpaper?.let { runtime.wallpapers.restoreLocal(it) }
-                    runtime.store.save(restored.setup.settings)
+                    restored.preferences.wallpaper?.let { runtime.wallpapers.restoreLocal(it) }
+                    runtime.store.save(restored.preferences.settings)
                     journal.clear()
                     restored.keepMedia()
                 } catch (failure: Exception) {

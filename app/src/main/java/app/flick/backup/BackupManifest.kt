@@ -4,12 +4,12 @@ import app.flick.profiles.Profile
 import app.flick.profiles.ProfileSecurity
 import app.flick.settings.LauncherSettings
 import app.flick.settings.SettingsCodec
-import app.flick.settings.SetupImport
 import app.flick.settings.NavigationSound
 import app.flick.profiles.ProfileStartup
 import app.flick.themes.ThemeCodec
 import app.flick.json.JsonStructure
 import app.flick.wallpaper.WallpaperSettings
+import app.flick.wallpaper.WallpaperPhoto
 import app.flick.wallpaper.BuiltInWallpapers
 import java.net.URI
 import org.json.JSONArray
@@ -17,6 +17,10 @@ import org.json.JSONObject
 
 data class BackupSummary(val profileCount: Int, val photoCount: Int, val embeddedImages: Int,
     val folderNeedsSelection: Boolean, val notices: List<String>)
+
+data class BackupPreferences(val settings: LauncherSettings, val wallpaper: WallpaperSettings?) {
+    override fun toString() = "BackupPreferences(privateData=redacted)"
+}
 
 /** Portable preferences contain no account, pairing or parent-PIN credentials. */
 internal class BackupManifest private constructor(private val value: JSONObject) {
@@ -43,7 +47,7 @@ internal class BackupManifest private constructor(private val value: JSONObject)
     }
 
     fun resolve(current: LauncherSettings, parentPin: String?, assetUri: (String) -> String,
-        folderAvailable: Boolean): SetupImport {
+        folderAvailable: Boolean): BackupPreferences {
         val required = needsParentPin(current)
         require(!required || parentPin?.matches(Regex("[0-9]{4}")) == true) { "Set a four-digit parent PIN before restoring" }
         val settings = JSONObject(value.getJSONObject("settings").toString())
@@ -58,16 +62,21 @@ internal class BackupManifest private constructor(private val value: JSONObject)
             resolveImage(profile, "avatar", assetUri)
             resolveImage(profile, "wallpaperUri", assetUri)
         }
-        val setup = JSONObject().put("settings", settings)
-        value.optJSONObject("wallpaper")?.let {
-            val wallpaper = JSONObject(it.toString())
-            if (!folderAvailable) wallpaper.remove("folderUri")
-            val photos = wallpaper.getJSONArray("photos")
-            for (index in 0 until photos.length()) resolveImage(photos.getJSONObject(index), "uri", assetUri)
-            setup.put("wallpaper", wallpaper)
+        val wallpaper = value.optJSONObject("wallpaper")?.let {
+            val photos = it.getJSONArray("photos")
+            WallpaperSettings(
+                photos = (0 until photos.length()).map { index ->
+                    val photo = JSONObject(photos.getJSONObject(index).toString())
+                    resolveImage(photo, "uri", assetUri)
+                    WallpaperPhoto(photo.getString("uri"))
+                },
+                folderUri = folderUri?.takeIf { folderAvailable },
+                intervalSeconds = it.optInt("intervalSeconds", 300),
+                dimAmount = it.optDouble("dimAmount", .18).toFloat(),
+                shuffle = it.optBoolean("shuffle", true),
+            )
         }
-        val parsed = SetupImport.parse(setup.toString())
-        return parsed.copy(wallpaper = parsed.wallpaper?.copy(folderUri = folderUri?.takeIf { folderAvailable }))
+        return BackupPreferences(SettingsCodec.read(settings), wallpaper)
     }
 
     fun encoded(): String = value.toString()
@@ -87,17 +96,12 @@ internal class BackupManifest private constructor(private val value: JSONObject)
                 .put("photos", JSONArray(wallpaper.photos.map { JSONObject().put("uri", it.uri) }))
                 .put("intervalSeconds", wallpaper.intervalSeconds).put("dimAmount", wallpaper.dimAmount)
                 .put("shuffle", wallpaper.shuffle).apply { wallpaper.folderUri?.let { put("folderUri", it) } })
-            return fromSetup(setup, transform, assets, legacy = false)
+            return portableManifest(setup, transform, assets)
         }
 
-        fun fromLegacy(text: String, transform: (String) -> String?, assets: () -> Set<String>): BackupManifest =
-            fromSetup(readJson(text), transform, assets, legacy = true)
-
-        private fun fromSetup(setup: JSONObject, transform: (String) -> String?, assets: () -> Set<String>, legacy: Boolean): BackupManifest {
+        private fun portableManifest(setup: JSONObject, transform: (String) -> String?, assets: () -> Set<String>): BackupManifest {
             val settings = JSONObject(setup.getJSONObject("settings").toString())
             settings.keys().asSequence().toSet().toList().filter { it !in settingsFields }.forEach(settings::remove)
-            if (!settings.has("profiles")) settings.put("profiles", JSONArray().put(JSONObject()
-                .put("id", "home").put("name", "Home").put("child", false)))
             val profiles = settings.getJSONArray("profiles")
             var omitted = 0
             fun image(value: String): String? = transform(value).also { if (it == null) omitted++ }
@@ -112,7 +116,6 @@ internal class BackupManifest private constructor(private val value: JSONObject)
                 }
             }
             val notices = mutableListOf<String>()
-            if (legacy) notices += "Home Assistant sign-in, pairing and existing adult PINs stay on this TV."
             val root = JSONObject().put("format", "flick.backup").put("version", 1).put("settings", settings)
             setup.optJSONObject("wallpaper")?.let {
                 val wallpaper = JSONObject(it.toString())

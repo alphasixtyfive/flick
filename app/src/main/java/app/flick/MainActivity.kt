@@ -103,14 +103,12 @@ class MainActivity : ComponentActivity() {
                 FlickTheme(largeText = state.settings.largeText, appearance = state.settings.appearance) { FlickScreen(state, actions) }
             }
         }
-        readSetupIntent(intent)
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
         if (intent.action == Intent.ACTION_MAIN && intent.hasCategory(Intent.CATEGORY_HOME)) model.requestHome()
-        readSetupIntent(intent)
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
@@ -246,13 +244,6 @@ class MainActivity : ComponentActivity() {
         photoProfileId = profile.id
         choosingProfileWallpaper = true
         runCatching { photoPicker.launch(arrayOf("image/*")) }.onFailure { model.message("No photo picker is installed") }
-    }
-
-    private fun readSetupIntent(intent: Intent?) {
-        val setup = intent?.getStringExtra("flick.setup") ?: return
-        intent.removeExtra("flick.setup")
-        if (model.canManage()) model.readLegacyBackup(setup)
-        else model.message("Choose an adult profile before restoring setup")
     }
 
     private companion object { const val READ_TV_LISTINGS = "android.permission.READ_TV_LISTINGS" }

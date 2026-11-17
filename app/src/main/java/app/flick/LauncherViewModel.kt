@@ -461,7 +461,6 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     fun prepareBackup() { task { backups.prepareExport() } }
     fun saveBackup(uri: Uri?) { task { backups.write(uri) } }
     fun readBackup(uri: Uri) { task { backups.read(uri) } }
-    fun readLegacyBackup(raw: String) { task { backups.readLegacy(raw) } }
     fun discardBackup() { task { backups.discard() } }
     fun restoreBackup(pin: String?, complete: (Result<Unit>) -> Unit) { task {
         try { backups.restore(pin); complete(Result.success(Unit)) }

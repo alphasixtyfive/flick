@@ -35,6 +35,13 @@ class BackupArchiveTest {
         assertEquals(1, validated)
     }
 
+    @Test fun plainJsonCannotBeRestoredAsABackupArchive() {
+        val raw = "{\"settings\":{}}".toByteArray()
+        assertThrows(IllegalArgumentException::class.java) {
+            BackupArchive.read(ByteArrayInputStream(raw), temporary.newFolder(), {})
+        }
+    }
+
     @Test fun untrustedPathsAndUnexpectedEntriesNeverEscapeStaging() {
         for (name in listOf("../outside", "/absolute", "media/../outside", "media/fake", "extra.json")) {
             val archive = zip(listOf("manifest.json" to manifest().encoded().toByteArray(), name to bytes))
