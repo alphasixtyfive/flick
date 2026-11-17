@@ -6,64 +6,38 @@ import android.media.AudioManager
 import android.media.SoundPool
 import android.os.SystemClock
 import android.view.KeyEvent
+import androidx.annotation.MainThread
 import app.flick.R
 import app.flick.settings.NavigationSound
 
+@MainThread
 class NavigationSounds(context: Context) {
-    private val audio = context.getSystemService(AudioManager::class.java)
+    private val app = context.applicationContext
+    private val playback = NavigationSoundPlayback(
+        createSoft = { AndroidSoftSound(app) },
+        playSystem = { app.getSystemService(AudioManager::class.java)?.playSoundEffect(AudioManager.FX_KEY_CLICK) },
+        now = SystemClock::elapsedRealtime,
+    )
+
+    fun play(mode: NavigationSound, preview: Boolean = false) = playback.play(mode, preview)
+    fun close() = playback.close()
+}
+
+private class AndroidSoftSound(private val context: Context) : SoftSoundBackend {
     private val pool = SoundPool.Builder().setMaxStreams(1).setAudioAttributes(AudioAttributes.Builder()
         .setUsage(AudioAttributes.USAGE_ASSISTANCE_SONIFICATION).setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build()).build()
-    private var ready = false
-    private var closed = false
-    private var pendingPreview = false
-    private var activeStream = 0
-    private val gate = NavigationSoundGate()
-    private val tick: Int
+    private var tick = 0
 
-    init {
-        pool.setOnLoadCompleteListener { _, _, status ->
-            if (!closed) {
-                ready = status == 0
-                if (ready && pendingPreview) { pendingPreview = false; play(NavigationSound.Soft, preview = true) }
-            }
-        }
+    override fun load(onComplete: (Boolean) -> Unit) {
+        pool.setOnLoadCompleteListener { _, _, status -> onComplete(status == 0) }
         tick = pool.load(context, R.raw.navigation_tick, 1)
+        if (tick == 0) onComplete(false)
     }
 
-    fun play(mode: NavigationSound, preview: Boolean = false) {
-        if (closed) return
-        if (mode == NavigationSound.Off) {
-            pendingPreview = false
-            stopSoft()
-            return
-        }
-        if (mode == NavigationSound.Soft && !ready) {
-            if (preview) pendingPreview = true
-            return
-        }
-        pendingPreview = false
-        if (!gate.accept(SystemClock.elapsedRealtime(), preview)) return
-        when (mode) {
-            NavigationSound.Soft -> activeStream = pool.play(tick, .3f, .3f, 0, 0, 1f)
-            NavigationSound.System -> {
-                stopSoft()
-                audio.playSoundEffect(AudioManager.FX_KEY_CLICK)
-            }
-            NavigationSound.Off -> Unit
-        }
-    }
-
-    private fun stopSoft() {
-        if (activeStream != 0) pool.stop(activeStream)
-        activeStream = 0
-    }
-
-    fun close() {
-        if (closed) return
-        closed = true
-        pendingPreview = false
-        pool.setOnLoadCompleteListener(null)
-        pool.release()
+    override fun play(): Int = pool.play(tick, .3f, .3f, 0, 0, 1f)
+    override fun stop(stream: Int) { pool.stop(stream) }
+    override fun close() {
+        try { pool.setOnLoadCompleteListener(null) } finally { pool.release() }
     }
 }
 
