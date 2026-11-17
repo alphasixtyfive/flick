@@ -56,11 +56,26 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     private var placeSearchGeneration = 0L
     private var weatherLoop: Job? = null
     private var displayedWeatherLocation: WeatherLocation? = null
-    private var catalogueRead: Job? = null
+    private val catalogueActive = MutableStateFlow(false)
     private var continueRead: Job? = null
     private var active = true
 
     init {
+        viewModelScope.launch {
+            combine(catalogue.revision, catalogueActive) { _, visible -> visible }.collectLatest { visible ->
+                if (visible) {
+                    try {
+                        allApps = catalogue.apps()
+                        updateCatalogue()
+                        mutable.update { it.copy(loading = false) }
+                    } catch (cancelled: CancellationException) { throw cancelled }
+                    catch (_: Exception) {
+                        mutable.update { it.copy(loading = false) }
+                        message("Apps could not be loaded. Open Home to try again.")
+                    }
+                }
+            }
+        }
         viewModelScope.launch { backups.state.collect { value -> mutable.update { it.copy(backup = value) } } }
         viewModelScope.launch { runtime.profileSession.state.collect { session ->
             mutable.update { it.copy(profileSession = session, profileError = null, profileErrorTarget = null) }
@@ -85,15 +100,14 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch { runtime.notifications.state.collect { value -> mutable.update { it.copy(notifications = value) } } }
         viewModelScope.launch { wallpapers.settings.collect { value -> mutable.update { it.copy(wallpaperSettings = value) } } }
         viewModelScope.launch { wallpapers.current.collect { value -> mutable.update { it.copy(wallpaperUri = value?.uri) } } }
-        refreshCatalogue()
     }
 
     fun setActive(active: Boolean) {
         this.active = active
+        catalogueActive.value = active
         wallpapers.setActive(active)
         weatherLoop?.cancel()
         if (active) {
-            refreshCatalogue()
             refreshContinue()
             weatherLoop = viewModelScope.launch {
                 store.state.map { settings -> settings.weatherLocation.takeIf { settings.showWeather } }.distinctUntilChanged().collectLatest { location ->
@@ -108,15 +122,6 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                 }
             }
         } else continueRead?.cancel()
-    }
-
-    fun refreshCatalogue() {
-        if (catalogueRead?.isActive == true) return
-        catalogueRead = task {
-            allApps = catalogue.apps()
-            updateCatalogue()
-            mutable.update { it.copy(loading = false) }
-        }
     }
 
     private fun refreshContinue() {
