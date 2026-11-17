@@ -220,8 +220,8 @@ class UpdateController(context: Context, private val scope: CoroutineScope, priv
                     PackageInstaller.STATUS_PENDING_USER_ACTION -> {
                         val confirmation = if (Build.VERSION.SDK_INT >= 33) intent.getParcelableExtra(Intent.EXTRA_INTENT, Intent::class.java)
                             else @Suppress("DEPRECATION") intent.getParcelableExtra<Intent>(Intent.EXTRA_INTENT)
-                        if (activeSession != pending || state.value.phase != UpdatePhase.Installing) return@launch
-                        if (confirmation == null || !canInstall()) {
+                        if (activeSession != pending || state.value.phase != UpdatePhase.Installing ||
+                            confirmation == null || !canInstall()) {
                             installer.abandon(pending)
                             if (generation.get() != epoch) return@launch
                             activeSession = null

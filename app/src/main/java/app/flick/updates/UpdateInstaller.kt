@@ -22,7 +22,7 @@ internal data class PendingUpdate(val sessionId: Int, val token: String, val ver
 
 internal class UpdateInstaller(private val context: Context) {
     private val manager = context.packageManager
-    private val installer = manager.packageInstaller
+    private val installer by lazy { manager.packageInstaller }
     private val preferences by lazy { context.getSharedPreferences("update-install", Context.MODE_PRIVATE) }
 
     fun allowed(): Boolean = manager.canRequestPackageInstalls()
