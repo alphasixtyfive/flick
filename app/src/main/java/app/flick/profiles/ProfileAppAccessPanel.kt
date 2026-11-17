@@ -31,7 +31,7 @@ internal fun ProfileAppAccessPanel(
             error = result.exceptionOrNull()?.message?.take(160)
         }
     }
-    TvLazyPanel("Allowed apps", onBack = onBack) {
+    TvLazyPanel("Allowed apps", onBack = onBack, focusKey = apps.isNotEmpty() || uninstalled.isNotEmpty()) {
         item(key = "status") {
             Text(error ?: if (saving.isEmpty()) "Changes save automatically." else "Saving changes…",
                 style = MaterialTheme.typography.bodySmall,
