@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.sp
 import androidx.tv.material3.*
 import app.flick.ui.theme.FlickColors
 import app.flick.ui.theme.TvLayout
+import app.flick.ui.theme.homeMetadataStyle
 import app.flick.weather.WeatherReading
 import app.flick.weather.icon
 import java.time.LocalDateTime
@@ -57,9 +58,7 @@ internal fun ClockWeather(clock24: Boolean, showWeather: Boolean, weatherLocatio
     val periodStyle = MaterialTheme.typography.bodySmall.copy(
         fontSize = (11 * scale).sp, lineHeight = (16 * scale).sp,
     )
-    val metadataStyle = MaterialTheme.typography.bodySmall.copy(
-        fontSize = (14 * scale).sp, lineHeight = (20 * scale).sp,
-    )
+    val metadataStyle = homeMetadataStyle(scale)
     fun textWidth(value: String, style: TextStyle) = textMeasurer.measure(value, style, maxLines = 1, softWrap = false).size.width
     val sampleDay = remember { LocalDateTime.of(2000, 1, 1, 0, 0) }
     val longestTime = sampleDay.withHour(if (clock24) 0 else 10).format(timeFormat)
@@ -80,12 +79,9 @@ internal fun ClockWeather(clock24: Boolean, showWeather: Boolean, weatherLocatio
     } else 0.dp
     val dateWidth = blockWidth - if (weatherVisible) weatherWidth + metadataGap else 0.dp
     val dateCandidates = dateFormats.map { now.format(it) }.distinct()
-    val dateChoices = dateCandidates.flatMap { label ->
-        listOf(metadataStyle, metadataStyle.copy(fontSize = (12 * scale).sp)).map { label to it }
-    }
-    val (dateLabel, dateStyle) = dateChoices.firstOrNull { (label, style) ->
-        with(density) { textWidth(label, style).toDp() } <= dateWidth
-    } ?: dateChoices.last()
+    val dateLabel = dateCandidates.firstOrNull { label ->
+        with(density) { textWidth(label, metadataStyle).toDp() } <= dateWidth
+    } ?: dateCandidates.last()
     val clockLineHeight = with(density) { (TvLayout.ClockLineHeight * scale).toDp() }
     val metadataHeight = with(density) { metadataStyle.lineHeight.toDp() }
     LaunchedEffect(Unit) {
@@ -106,7 +102,7 @@ internal fun ClockWeather(clock24: Boolean, showWeather: Boolean, weatherLocatio
         }
         Row(Modifier.fillMaxWidth().height(metadataHeight), verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(metadataGap, Alignment.CenterHorizontally)) {
-            Text(dateLabel, style = dateStyle, color = FlickColors.Secondary,
+            Text(dateLabel, style = metadataStyle, color = FlickColors.Secondary,
                 maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f, fill = false))
             if (weatherVisible) {

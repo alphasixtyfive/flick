@@ -85,6 +85,11 @@ private val Type = Typography(
 private fun TextStyle.larger() = copy(fontSize = fontSize * 1.12f, lineHeight = lineHeight * 1.12f)
 
 @Composable
+internal fun homeMetadataStyle(scale: Float): TextStyle = MaterialTheme.typography.bodySmall.copy(
+    fontSize = 14.sp * scale, lineHeight = 20.sp * scale,
+)
+
+@Composable
 fun FlickTheme(largeText: Boolean = false, content: @Composable () -> Unit) {
     val typography = remember(largeText) {
         if (!largeText) Type else Type.copy(
