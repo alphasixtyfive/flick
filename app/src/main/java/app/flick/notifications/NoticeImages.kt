@@ -2,17 +2,27 @@ package app.flick.notifications
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import app.flick.platform.cancelAsync
 import app.flick.platform.closeAsync
 import java.io.ByteArrayOutputStream
+import java.io.IOException
+import java.io.InputStream
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.coroutines.resume
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.Call
+import okhttp3.Callback
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.Response
 
 /** This client deliberately has no Home Assistant credentials or redirect handling. */
 internal class NoticeImages {
@@ -33,27 +43,35 @@ internal class NoticeImages {
         calls.add(call)
         try {
             if (closed.get()) return@withContext null
-            call.execute().use { response ->
-                if (!response.isSuccessful) return@withContext null
-                val body = response.body ?: return@withContext null
-                if (body.contentLength() > MaxDownloadBytes) return@withContext null
-                val bytes = body.byteStream().use { input ->
-                    val output = ByteArrayOutputStream()
-                    val buffer = ByteArray(8 * 1024)
-                    var total = 0
-                    while (true) {
-                        val count = input.read(buffer)
-                        if (count < 0) break
-                        total += count
-                        if (total > MaxDownloadBytes) return@withContext null
-                        output.write(buffer, 0, count)
-                    }
-                    output.toByteArray()
-                }
+            val bytes = read(call) ?: return@withContext null
+            withContext(Dispatchers.Default) {
+                currentCoroutineContext().ensureActive()
                 normalize(bytes)
             }
-        } catch (_: Exception) { null }
+        } catch (cancelled: CancellationException) { throw cancelled }
+        catch (_: Exception) { null }
         finally { calls.remove(call) }
+    }
+
+    private suspend fun read(call: Call): ByteArray? = suspendCancellableCoroutine { continuation ->
+        continuation.invokeOnCancellation { client.cancelAsync(call) }
+        call.enqueue(object : Callback {
+            override fun onFailure(call: Call, error: IOException) {
+                if (continuation.isActive) continuation.resume(null)
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                val bytes = runCatching {
+                    response.use {
+                        if (!it.isSuccessful) return@use null
+                        val body = it.body ?: return@use null
+                        if (body.contentLength() > MaxDownloadBytes) return@use null
+                        readNoticeImageBytes(body.byteStream(), MaxDownloadBytes) { continuation.isActive }
+                    }
+                }.getOrNull()
+                if (continuation.isActive) continuation.resume(bytes)
+            }
+        })
     }
 
     fun close() {
@@ -111,5 +129,18 @@ internal class NoticeImages {
                 return null
             } finally { if (bitmap !== source) bitmap.recycle() }
         }
+    }
+}
+
+/** Enforce the limit while reading, including when a server omits its content length. */
+internal fun readNoticeImageBytes(input: InputStream, maximumBytes: Int, active: () -> Boolean): ByteArray? {
+    val output = ByteArrayOutputStream()
+    val buffer = ByteArray(8 * 1024)
+    while (true) {
+        if (!active()) throw IOException("Cancelled")
+        val count = input.read(buffer)
+        if (count < 0) return output.toByteArray()
+        if (output.size() + count > maximumBytes) return null
+        output.write(buffer, 0, count)
     }
 }
