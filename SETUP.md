@@ -12,6 +12,18 @@ The package is `app.flick`. Updates must use the same signing certificate as the
 Keep the stock launcher installed and enabled so you can switch back through Android Settings.
 Select the stock launcher before uninstalling Flick. Root and accessibility-service access are not required.
 
+## Updates
+
+Open **Settings → About → Check for updates**. Flick checks the latest stable GitHub release
+when you ask; there is no background update check. Choose **Download update**, then **Install update**.
+If Android asks, allow Flick under **Install unknown apps**, return to Flick and select
+**Install update** again. Android's installer asks you to confirm or cancel.
+
+Flick checks the download digest, package, version and signing certificate before opening the
+installer. Updates preserve the installed app's data. A build signed with a different key cannot
+replace your installation; use its original update source rather than uninstalling to work around this.
+Unsigned CI artifacts are for build inspection, not installation.
+
 ## Home screen
 
 Settings contains Home screen, Wallpapers, Home Assistant, Clock & weather, Profiles, Device and About.

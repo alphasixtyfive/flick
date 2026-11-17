@@ -30,6 +30,7 @@ Android 8.0 or later.
 - Clock, weather, navigation sounds and configurable home-screen controls.
 - Home Assistant lights, switches, scenes and device status.
 - Optional TV pairing for notifications and remote profile/wallpaper management.
+- Check for GitHub updates in Settings, then confirm installation through Android.
 
 ## Get started
 
