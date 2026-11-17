@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -51,24 +52,26 @@ fun WallpaperBackground(
         Color.Black.copy(alpha = dim),
         Color.Black.copy(alpha = dim + (1f - dim) * .86f),
     )) }
-    BoxWithConstraints(modifier.background(Brush.verticalGradient(listOf(Color(0xFF243448), Color(0xFF111720))))) {
+    val fallback = remember { Brush.verticalGradient(listOf(Color(0xFF243448), Color(0xFF111720))) }
+    BoxWithConstraints(modifier) {
         val target = IntSize(constraints.maxWidth.coerceIn(1, 3840), constraints.maxHeight.coerceIn(1, 2160))
-        WallpaperFrames(photo, target)
-        Box(Modifier.fillMaxSize().background(shade))
+        WallpaperFrames(photo, target, fallback, shade)
     }
 }
 
 @Composable
-private fun WallpaperFrames(photo: WallpaperPhoto?, target: IntSize) {
+private fun WallpaperFrames(photo: WallpaperPhoto?, target: IntSize, fallback: Brush, shade: Brush) {
     val context = LocalContext.current
     var shown by remember { mutableStateOf<ImageBitmap?>(null) }
     var previous by remember { mutableStateOf<ImageBitmap?>(null) }
+    var transitioning by remember { mutableStateOf(false) }
     val opacity = remember { Animatable(1f) }
 
     LaunchedEffect(photo?.uri, target) {
         // A rapid Next press settles the last successful frame before fetching another.
         opacity.snapTo(1f)
         previous = null
+        transitioning = false
         if (photo == null) {
             shown = null
             return@LaunchedEffect
@@ -90,18 +93,34 @@ private fun WallpaperFrames(photo: WallpaperPhoto?, target: IntSize) {
         val bitmap = withContext(Dispatchers.Default) { frame(result.drawable) }
         previous = shown
         shown = bitmap
+        transitioning = true
         opacity.snapTo(0f)
         // Compose animation uses the platform's motion-duration setting, including disabled motion.
         opacity.animateTo(1f, tween(700))
         previous = null
+        transitioning = false
     }
 
-    previous?.let { Image(it, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop) }
-    shown?.let { Image(it, contentDescription = null, modifier = Modifier.fillMaxSize().graphicsLayer {
-        // A single image has no overlapping children: fade it without an offscreen buffer.
-        compositingStrategy = CompositingStrategy.ModulateAlpha
-        alpha = opacity.value
-    }, contentScale = ContentScale.Crop) }
+    // A nullable outgoing frame preserves the fallback during the first photo's fade.
+    val frames = if (transitioning) listOf(previous, shown) else listOf(shown)
+    frames.forEach { bitmap ->
+        key(bitmap) {
+            val incoming = bitmap === shown
+            WallpaperFrame(bitmap, fallback, shade, Modifier.fillMaxSize().graphicsLayer {
+                // Keep the native-size pixels while alpha changes on the retained layer.
+                compositingStrategy = CompositingStrategy.Offscreen
+                alpha = if (incoming) opacity.value else 1f
+            })
+        }
+    }
+}
+
+@Composable
+private fun WallpaperFrame(bitmap: ImageBitmap?, fallback: Brush, shade: Brush, modifier: Modifier) {
+    Box(modifier.background(fallback)) {
+        bitmap?.let { Image(it, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop) }
+        Box(Modifier.fillMaxSize().background(shade))
+    }
 }
 
 private fun frame(drawable: Drawable): ImageBitmap {
