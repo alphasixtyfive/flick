@@ -11,6 +11,7 @@ import app.flick.homeassistant.HomeAssistantSetupPanel
 import app.flick.homeassistant.HomeEntityPicker
 import app.flick.homeassistant.HomeAssistantControlsPanel
 import app.flick.integration.IntegrationPanel
+import app.flick.updates.UpdatePanel
 
 @Composable
 internal fun HomePanels(panel: HomePanel?, state: HomeState, actions: HomeActions,
@@ -40,6 +41,8 @@ internal fun HomePanels(panel: HomePanel?, state: HomeState, actions: HomeAction
             onIntegration = { onPanel(HomePanel.Integration) }, displayPower = state.displayPower,
             onDiscoverDisplayPlayers = actions.discoverDisplayPlayers, onSaveDisplayPowerEntity = actions.saveDisplayPowerEntity)
         HomePanel.Integration -> IntegrationPanel(state, actions, onBack = { onPanel(HomePanel.HomeAssistantSetup) })
+        HomePanel.Updates -> UpdatePanel(state.update, actions.checkUpdates, actions.downloadUpdate,
+            actions.installUpdate, actions.cancelUpdate, onClose = { actions.cancelUpdate(); onPanel(HomePanel.Settings) })
         is HomePanel.HomeEntities -> HomeEntityPicker(state.haEntities, state.haConfiguration.controls, state.haBusy,
             state.haDiscoveryLoaded, actions.saveHomeControls, actions.showMessage,
             onBack = { onPanel(if (panel.fromControls) HomePanel.HomeAssistantControls else HomePanel.HomeAssistantSetup) })

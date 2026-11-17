@@ -17,6 +17,31 @@ python scripts/check-privacy.py
 The privacy check requires Gitleaks on `PATH` and checks source files and branch history.
 Keep credentials, personal data and signing keys out of commits and issue reports.
 
+## Release signing
+
+Release builds are unsigned by default. CI verifies that build and uploads
+`app-release-unsigned.apk`; it does not publish an installable release.
+
+To sign a release, supply all four settings through environment variables or private
+Gradle properties. Keep the keystore and credentials outside the checkout.
+
+| Environment variable | Gradle property |
+| --- | --- |
+| `FLICK_KEYSTORE_FILE` | `flick.signing.storeFile` |
+| `FLICK_KEYSTORE_PASSWORD` | `flick.signing.storePassword` |
+| `FLICK_KEY_ALIAS` | `flick.signing.keyAlias` |
+| `FLICK_KEY_PASSWORD` | `flick.signing.keyPassword` |
+
+Gradle properties take precedence over environment variables. Partial configuration
+fails the build. Signed output is `app-release.apk`.
+
+Updates must use the installed app's signing identity and a higher version code.
+Before publishing, verify the APK with Android's `apksigner`, check the package and
+version, and compare its certificate fingerprint with the previous release. Publish
+only that verified APK as `Flick-<version>.apk`, with its SHA-256 checksum. GitHub's
+release-asset digest is also checked by Flick's updater. Never publish a CI artifact
+or a development APK as an update.
+
 ## Changes
 
 Keep pull requests focused and describe the behaviour they change. Use the shared TV components;

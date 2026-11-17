@@ -65,6 +65,7 @@ internal sealed interface HomePanel {
     data object HomeAssistantSetup : HomePanel
     data class HomeEntities(val fromControls: Boolean = false) : HomePanel
     data object Integration : HomePanel
+    data object Updates : HomePanel
     data object ManageProfiles : HomePanel
     data class EditProfile(val profile: Profile) : HomePanel
     data class Pin(val profile: Profile) : HomePanel
@@ -97,8 +98,8 @@ fun FlickScreen(state: HomeState, actions: HomeActions) {
     var retainedPanel by remember { mutableStateOf<HomePanel?>(null) }
     val panelVisibility = remember { MutableTransitionState(false) }
     val windowFocused = LocalWindowInfo.current.isWindowFocused
-    val allAppsScroll = rememberLazyGridState()
     val layoutDirection = LocalLayoutDirection.current
+    val allAppsScroll = rememberLazyGridState()
     var focusedAllApp by remember { mutableStateOf<String?>(null) }
     val appsScroll = rememberLazyListState()
     val continueScroll = rememberLazyListState()
@@ -230,9 +231,9 @@ fun FlickScreen(state: HomeState, actions: HomeActions) {
             val packageName = moving ?: return@onPreviewKeyEvent false
             if (panel != null || !backgroundEnabled) return@onPreviewKeyEvent false
             if (event.type == KeyEventType.KeyDown && event.key in listOf(Key.DirectionLeft, Key.DirectionRight)) {
-                moveOrder = HomePolicy.moveFavorite(moveOrder, byPackage.keys, packageName,
                 val visualDelta = if (event.key == Key.DirectionLeft) -1 else 1
                 val orderDelta = if (layoutDirection == LayoutDirection.Rtl) -visualDelta else visualDelta
+                moveOrder = HomePolicy.moveFavorite(moveOrder, byPackage.keys, packageName,
                     orderDelta)
                 true
             } else if (event.key in listOf(Key.DirectionUp, Key.DirectionDown)) {
@@ -346,6 +347,7 @@ fun FlickScreen(state: HomeState, actions: HomeActions) {
                 onWeather = { if (panel == displayed) openPanel(HomePanel.Weather) },
                 onWallpaper = { if (panel == displayed) openPanel(HomePanel.Wallpaper) },
                 onProfiles = { if (panel == displayed) openPanel(HomePanel.ManageProfiles) },
+                onUpdates = { if (panel == displayed) { actions.checkUpdates(); openPanel(HomePanel.Updates) } },
                 onHomeAssistant = { if (panel == displayed) openPanel(HomePanel.HomeAssistantSetup) })
             else HomePanels(displayed, state, actions, onClose = { if (panel == displayed) closePanel() },
                 onPanel = { if (panel == displayed) openPanel(it) })

@@ -25,6 +25,6 @@ jobs:
         run: sh ./gradlew --no-daemon testDebugUnitTest lintRelease assembleRelease
       - uses: actions/upload-artifact@v4
         with:
-          name: flick-test-apk
-          path: app/build/outputs/apk/release/*.apk
+          name: flick-unsigned-apk
+          path: app/build/outputs/apk/release/app-release-unsigned.apk
           if-no-files-found: error

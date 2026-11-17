@@ -16,6 +16,8 @@ import app.flick.weather.PlaceResult
 import app.flick.weather.WeatherReading
 import app.flick.integration.BridgeState
 import app.flick.notifications.NotificationState
+import app.flick.BuildConfig
+import app.flick.updates.UpdateState
 
 /** Immutable screen input. Native repositories remain responsible for authorization and I/O. */
 data class HomeState(
@@ -44,6 +46,7 @@ data class HomeState(
     val profileError: String? = null,
     val profileErrorTarget: String? = null,
     val homeRequestVersion: Int = 0,
+    val update: UpdateState = UpdateState(currentVersion = BuildConfig.VERSION_NAME),
 ) {
     val displayedWallpaperUri: String?
         get() = HomePolicy.profile(settings).wallpaperUri ?: wallpaperUri
@@ -95,4 +98,8 @@ data class HomeActions(
     val openRecoverySettings: () -> Unit,
     val requestContinueAccess: () -> Unit,
     val openProjectLink: (String) -> Unit,
+    val checkUpdates: () -> Unit,
+    val downloadUpdate: () -> Unit,
+    val cancelUpdate: () -> Unit,
+    val installUpdate: () -> Unit,
 )

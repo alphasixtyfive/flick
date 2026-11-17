@@ -121,6 +121,7 @@ class MainActivity : ComponentActivity() {
             model.setContinueAccess(checkSelfPermission(READ_TV_LISTINGS) == PackageManager.PERMISSION_GRANTED)
             model.setActive(true)
             runtime.resume()
+            runtime.updates.refresh()
         }
     }
     override fun onPause() { if (::model.isInitialized) { model.setActive(false); runtime.pause() }; super.onPause() }
@@ -202,6 +203,10 @@ class MainActivity : ComponentActivity() {
             if (model.canManage()) runCatching { continuePermission.launch(READ_TV_LISTINGS) }
                 .onFailure { model.message("TV listing access is unavailable on this device") }
         },
+        checkUpdates = model::checkUpdates,
+        downloadUpdate = model::downloadUpdate,
+        cancelUpdate = model::cancelUpdate,
+        installUpdate = { if (model.canManage()) runtime.updates.install(onPermissionRequired = ::openAndroid) },
     )
 
     private fun chooseProfilePhoto(profile: Profile) {

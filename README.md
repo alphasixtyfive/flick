@@ -109,7 +109,12 @@ Use JDK 21 and Android SDK platform 35. Set `JAVA_HOME` and `ANDROID_HOME`, then
 ```
 
 On macOS/Linux, use `sh ./gradlew assembleRelease`. The APK is written to
-`app/build/outputs/apk/release/`. Local builds use debug signing.
+`app/build/outputs/apk/release/`. Release builds are unsigned unless private signing
+settings are provided. CI artifacts are unsigned build outputs, not installable updates.
+
+Use `assembleDebug` for an installable development build. A development build cannot
+update an installation signed with another key. See [release signing](CONTRIBUTING.md#release-signing)
+before building an update for an existing installation.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for checks and [ARCHITECTURE.md](ARCHITECTURE.md) for the code layout.
 

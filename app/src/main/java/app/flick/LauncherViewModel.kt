@@ -69,6 +69,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                 HomePolicy.canManage(previous) != HomePolicy.canManage(settings)) refreshContinue()
         } }
         viewModelScope.launch { store.requiresRecovery.collect { required -> mutable.update { it.copy(recoveryRequired = required) } } }
+        viewModelScope.launch { runtime.updates.state.collect { update -> mutable.update { it.copy(update = update) } } }
         viewModelScope.launch { homeAssistant.configuration.collect { value -> mutable.update { it.copy(haConfiguration = value) } } }
         viewModelScope.launch { homeAssistant.connectionState.collect { value -> mutable.update { it.copy(haConnectionState = value) } } }
         viewModelScope.launch { homeAssistant.displayPower.collect { value -> mutable.update { it.copy(displayPower = value) } } }
@@ -178,6 +179,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                 return@launch
             }
             switchingProfile = true
+            runtime.updates.cancel()
             val job = currentCoroutineContext().job
             runtime.profileSelection = job
             val generation = runtime.profileSession.state.value.generation
@@ -328,6 +330,10 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     fun setHomePower(control: HaControl, on: Boolean) { privilegedTask { homeAssistant.setPower(control.id, on) } }
     fun runHomeScene(control: HaControl) { privilegedTask { homeAssistant.runScene(control.id) } }
     fun canManage() = adult()
+
+    fun checkUpdates() { if (adult()) runtime.updates.check() }
+    fun downloadUpdate() { if (adult()) runtime.updates.download() }
+    fun cancelUpdate() { runtime.updates.cancel() }
     fun requestHome() { mutable.update { it.copy(homeRequestVersion = it.homeRequestVersion + 1) } }
     fun setContinueAccess(granted: Boolean) {
         val changed = state.value.continueAccess != granted

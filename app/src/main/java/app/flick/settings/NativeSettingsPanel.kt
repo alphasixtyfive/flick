@@ -44,6 +44,7 @@ fun NativeSettingsPanel(
     onWallpaper: () -> Unit,
     onProfiles: () -> Unit,
     onHomeAssistant: () -> Unit,
+    onUpdates: () -> Unit,
 ) {
     val settings = state.settings
     var choice by remember { mutableStateOf<SettingChoice?>(null) }
@@ -119,6 +120,8 @@ fun NativeSettingsPanel(
                         style = MaterialTheme.typography.bodySmall, color = FlickColors.Secondary,
                         textAlign = TextAlign.Center)
                 }
+                TvSettingRow("Check for updates", detail = "GitHub releases", icon = Icons.Default.SystemUpdate,
+                    onClick = onUpdates)
                 TvSettingRow("Developer", detail = "@alphasixtyfive", icon = Icons.Default.Person,
                     onClick = { actions.openProjectLink(ProjectLinks.DEVELOPER) })
                 TvSettingRow("Source code", detail = "GitHub", icon = Icons.Default.Code,

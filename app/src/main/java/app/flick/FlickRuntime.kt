@@ -16,12 +16,14 @@ import app.flick.profiles.ProfileSecurity
 import app.flick.profiles.ProfileSession
 import app.flick.settings.SettingsStore
 import app.flick.wallpaper.WallpaperRepository
+import app.flick.updates.UpdateController
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.job
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
@@ -46,6 +48,7 @@ class FlickRuntime(context: Context) {
     internal var profileSelection: Job? = null
     @Volatile var switchingProfile = false
     private var visible = false
+    val updates by lazy { UpdateController(context, scope, canInstall = { visible && canManage() && !switchingProfile }) }
     private val power = context.getSystemService(PowerManager::class.java)
     private val commands = LauncherCommands(this)
     val notifications = NotificationController(context, scope,
@@ -134,6 +137,7 @@ class FlickRuntime(context: Context) {
         profileSelection?.cancel()
         privilegedJobs.toList().forEach { it.cancel() }
         notifications.dismissAll()
+        updates.cancel()
     }
 
     /** A cancelled management operation must not cancel its caller's command/event loop. */
@@ -141,7 +145,7 @@ class FlickRuntime(context: Context) {
         check(canManage() && !switchingProfile) { "Choose an adult profile first" }
         return try {
             coroutineScope {
-                val owner = currentCoroutineContext()[Job]!!
+                val owner = currentCoroutineContext().job
                 privilegedJobs.add(owner)
                 try {
                     check(canManage() && !switchingProfile) { "Choose an adult profile first" }
