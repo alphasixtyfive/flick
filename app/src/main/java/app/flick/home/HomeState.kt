@@ -69,7 +69,7 @@ data class HomeActions(
     val setProfileWallpaper: (Profile, String) -> Unit,
     val searchPlaces: (String) -> Unit,
     val rotateWallpaper: () -> Unit,
-    val saveWallpaperSettings: (WallpaperSettings, WallpaperSettings) -> Unit,
+    val saveWallpaperSettings: (WallpaperSettings, WallpaperSettings, (Result<Unit>) -> Unit) -> Unit,
     val chooseWallpaperFolder: () -> Unit,
     val chooseWallpaperPhotos: () -> Unit,
     val setHomePower: (HaControl, Boolean) -> Unit,

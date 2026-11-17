@@ -23,6 +23,7 @@ import app.flick.wallpaper.WallpaperSettings
 import app.flick.weather.WeatherRepository
 import app.flick.weather.WeatherLocation
 import app.flick.weather.refreshWeather
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.sync.Mutex
@@ -244,8 +245,30 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun rotateWallpaper() { if (runtime.profileSession.profile(store.state.value) != null) wallpapers.next() }
-    fun saveWallpaperSettings(before: WallpaperSettings, settings: WallpaperSettings) {
-        privilegedTask { wallpapers.saveChanges(before, settings) }
+    fun saveWallpaperSettings(before: WallpaperSettings, settings: WallpaperSettings,
+        onComplete: (Result<Unit>) -> Unit) {
+        val completed = AtomicBoolean()
+        fun complete(result: Result<Unit>) {
+            if (!completed.compareAndSet(false, true)) return
+            result.onFailure { message(it.message?.take(160) ?: "Wallpaper settings could not be saved") }
+            onComplete(result)
+        }
+        val job = viewModelScope.launch(Dispatchers.Main.immediate) {
+            val owner = currentCoroutineContext().job
+            privilegedJobs.add(owner)
+            val result = try {
+                check(adult() && !switchingProfile) { "Choose an adult profile first" }
+                wallpapers.saveChanges(before, settings)
+                Result.success(Unit)
+            } catch (cancelled: CancellationException) { throw cancelled }
+            catch (error: Exception) { Result.failure(error) }
+            finally { privilegedJobs.remove(owner) }
+            complete(result)
+        }
+        // A scope may be cancelled before the body runs, so completion also covers that boundary.
+        job.invokeOnCompletion { failure ->
+            if (failure != null) complete(Result.failure(IllegalStateException("Saving was interrupted. Check your photo selection.")))
+        }
     }
     fun selectWallpaperFolder(uri: String) { privilegedTask { wallpapers.selectFolder(uri) } }
     fun addWallpaperPhotos(uris: List<String>) { privilegedTask { wallpapers.addSelectedPhotos(uris) } }

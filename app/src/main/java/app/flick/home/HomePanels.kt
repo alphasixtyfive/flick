@@ -33,7 +33,7 @@ internal fun HomePanels(panel: HomePanel?, state: HomeState, actions: HomeAction
         HomePanel.Weather -> WeatherLocationPanel(state.settings.weatherLocation, state.places, state.searchingPlaces,
             actions.searchPlaces, { actions.updateSettings(state.settings, state.settings.copy(weatherLocation = it)) }, onBack = { onPanel(HomePanel.Settings) })
         HomePanel.Wallpaper -> WallpaperSettingsPanel(state.wallpaperSettings,
-            { actions.saveWallpaperSettings(state.wallpaperSettings, it) }, actions.rotateWallpaper,
+            { requested, complete -> actions.saveWallpaperSettings(state.wallpaperSettings, requested, complete) }, actions.rotateWallpaper,
             actions.chooseWallpaperFolder, actions.chooseWallpaperPhotos, onBack = { onPanel(HomePanel.Settings) })
         HomePanel.HomeAssistantSetup -> HomeAssistantSetupPanel(state.haConfiguration, state.haConnectionState, state.haBusy, actions.configureHomeAssistant, actions.retryHomeAssistant, onBack = { onPanel(HomePanel.Settings) },
             onChooseControls = { actions.discoverHomeEntities(); onPanel(HomePanel.HomeEntities()) },

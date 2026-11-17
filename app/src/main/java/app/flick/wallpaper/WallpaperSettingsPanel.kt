@@ -28,6 +28,7 @@ import app.flick.ui.theme.FlickColors
 import coil.compose.AsyncImage
 
 private enum class SlideshowChoice { Interval, Dimming }
+private data class PhotoSaveCompletion(val request: Int, val result: Result<Unit>)
 
 private sealed interface WallpaperPage {
     data object BuiltIn : WallpaperPage
@@ -40,22 +41,26 @@ private sealed interface WallpaperPage {
 }
 
 @Composable
-internal fun WallpaperSettingsPanel(settings: WallpaperSettings, onSave: (WallpaperSettings) -> Unit,
+internal fun WallpaperSettingsPanel(settings: WallpaperSettings, onSave: (WallpaperSettings, (Result<Unit>) -> Unit) -> Unit,
     onNext: () -> Unit, onChooseFolder: () -> Unit, onChoosePhotos: () -> Unit, onBack: () -> Unit) {
     var page by remember { mutableStateOf<WallpaperPage>(WallpaperPage.Sources) }
     var url by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
-    var pendingPhoto by remember { mutableStateOf<String?>(null) }
+    var savingPhoto by remember { mutableStateOf(false) }
+    var photoSaveRequest by remember { mutableIntStateOf(0) }
+    var photoSaveCompletion by remember { mutableStateOf<PhotoSaveCompletion?>(null) }
     var choice by remember { mutableStateOf<SlideshowChoice?>(null) }
     var confirmClear by remember { mutableStateOf(false) }
-    LaunchedEffect(settings.photos, pendingPhoto) {
-        val pending = pendingPhoto ?: return@LaunchedEffect
-        if (settings.photos.any { it.uri == pending }) {
-            pendingPhoto = null
+    fun save(value: WallpaperSettings) { onSave(value) {} }
+    LaunchedEffect(photoSaveCompletion) {
+        val finished = photoSaveCompletion ?: return@LaunchedEffect
+        if (finished.request != photoSaveRequest || page != WallpaperPage.AddPhoto) return@LaunchedEffect
+        savingPhoto = false
+        finished.result.fold(onSuccess = {
             url = ""
             error = null
             page = WallpaperPage.Photos
-        }
+        }, onFailure = { error = it.message?.take(160) ?: "This photo could not be saved. Try again." })
     }
     when (val current = page) {
         WallpaperPage.Sources -> TvPanel("Wallpapers", onBack = onBack) {
@@ -74,17 +79,17 @@ internal fun WallpaperSettingsPanel(settings: WallpaperSettings, onSave: (Wallpa
         }
         WallpaperPage.BuiltIn -> BuiltInWallpaperPicker(settings.photos.singleOrNull()?.uri,
             onSelect = { wallpaper ->
-                onSave(settings.copy(photos = listOf(WallpaperPhoto(wallpaper.uri)), folderUri = null))
+                save(settings.copy(photos = listOf(WallpaperPhoto(wallpaper.uri)), folderUri = null))
                 page = WallpaperPage.Sources
             }, onBack = { page = WallpaperPage.Sources }, onUseAll = {
-                onSave(settings.copy(photos = BuiltInWallpapers.items.map { WallpaperPhoto(it.uri) }, folderUri = null))
+                save(settings.copy(photos = BuiltInWallpapers.items.map { WallpaperPhoto(it.uri) }, folderUri = null))
                 page = WallpaperPage.Sources
             })
         WallpaperPage.Slideshow -> TvPanel("Slideshow", onBack = { page = WallpaperPage.Sources }) {
             Text("Selected photos and the photo folder rotate together.", style = MaterialTheme.typography.bodySmall)
             TvSettingRow("Next photo", icon = Icons.Default.PhotoLibrary, onClick = onNext)
             TvSettingRow("Shuffle", checked = settings.shuffle, icon = Icons.Default.Shuffle,
-                onClick = { onSave(settings.copy(shuffle = !settings.shuffle)) })
+                onClick = { save(settings.copy(shuffle = !settings.shuffle)) })
             TvSettingRow("Change photo", detail = photoIntervalLabel(settings.intervalSeconds), icon = Icons.Default.Timer,
                 onClick = { choice = SlideshowChoice.Interval })
             TvSettingRow("Dim photos", detail = "${(settings.dimAmount * 100).toInt()}%", icon = Icons.Default.BrightnessMedium,
@@ -93,7 +98,8 @@ internal fun WallpaperSettingsPanel(settings: WallpaperSettings, onSave: (Wallpa
         WallpaperPage.Advanced -> TvPanel("Advanced", onBack = { page = WallpaperPage.Sources }) {
             TvSettingRow("Add photo URL", detail = "A direct image link", icon = Icons.Default.Link, onClick = {
                 error = null
-                pendingPhoto = null
+                savingPhoto = false
+                photoSaveRequest++
                 page = WallpaperPage.AddPhoto
             })
             Text("For a collection, choose photos or a folder on the Wallpapers screen. No web server is needed.", style = MaterialTheme.typography.bodySmall)
@@ -120,26 +126,31 @@ internal fun WallpaperSettingsPanel(settings: WallpaperSettings, onSave: (Wallpa
                 }
             }
         }
-        WallpaperPage.AddPhoto -> TvPanel("Add photo URL", onBack = { page = WallpaperPage.Advanced }) {
+        WallpaperPage.AddPhoto -> TvPanel("Add photo URL", onBack = {
+            photoSaveRequest++
+            savingPhoto = false
+            page = WallpaperPage.Advanced
+        }) {
             NativeTextField("Photo URL", url, { url = it.take(4096); error = null }, keyboardType = KeyboardType.Uri)
             Text("Use a direct HTTP or HTTPS image address. The link is stored privately on this TV.", style = MaterialTheme.typography.bodySmall)
             error?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
-            TvSettingRow(if (pendingPhoto != null) "Saving…" else "Add photo", icon = Icons.Default.Add, onClick = {
+            TvSettingRow(if (savingPhoto) "Saving…" else "Add photo", icon = Icons.Default.Add, onClick = {
                 val candidate = url.trim()
                 error = when {
-                    pendingPhoto != null -> "Wait for the current photo to finish saving."
+                    savingPhoto -> "Wait for the current photo to finish saving."
                     !validOnlinePhotoUrl(candidate) -> "Enter an HTTP or HTTPS photo URL without a login."
                     settings.photos.any { it.uri == candidate } -> "This photo is already selected."
                     settings.photos.size >= MAX_CONFIGURED_PHOTOS -> "Choose up to $MAX_CONFIGURED_PHOTOS photos."
                     else -> null
                 }
                 if (error == null) {
-                    pendingPhoto = candidate
-                    onSave(settings.copy(photos = settings.photos + WallpaperPhoto(candidate)))
+                    savingPhoto = true
+                    val request = ++photoSaveRequest
+                    onSave(settings.copy(photos = settings.photos + WallpaperPhoto(candidate))) { result ->
+                        photoSaveCompletion = PhotoSaveCompletion(request, result)
+                    }
                 }
             })
-            if (pendingPhoto != null) TvSettingRow("Try again", detail = "If saving failed", icon = Icons.Default.Refresh,
-                onClick = { pendingPhoto = null })
         }
         is WallpaperPage.Photo -> TvPanel("Photo", onBack = { page = WallpaperPage.Photos }) {
             var previewFailed by remember(current.uri) { mutableStateOf(false) }
@@ -148,23 +159,23 @@ internal fun WallpaperSettingsPanel(settings: WallpaperSettings, onSave: (Wallpa
             else AsyncImage(model = current.uri, contentDescription = "Photo preview", contentScale = ContentScale.Fit,
                 onError = { previewFailed = true }, modifier = Modifier.fillMaxWidth().height(150.dp))
             TvSettingRow("Remove photo", icon = Icons.Default.Remove, onClick = {
-                onSave(settings.copy(photos = settings.photos.filterNot { it.uri == current.uri }))
+                save(settings.copy(photos = settings.photos.filterNot { it.uri == current.uri }))
                 page = WallpaperPage.Photos
             })
         }
     }
     when (choice) {
         SlideshowChoice.Interval -> TvChoiceDialog("Change photo", listOf(30, 60, 300, 900, 1800, 3600, 86400).plus(settings.intervalSeconds).distinct().sorted(),
-            settings.intervalSeconds, ::photoIntervalLabel, { onSave(settings.copy(intervalSeconds = it)) }, { choice = null })
+            settings.intervalSeconds, ::photoIntervalLabel, { save(settings.copy(intervalSeconds = it)) }, { choice = null })
         SlideshowChoice.Dimming -> TvChoiceDialog("Dim photos", listOf(0f, .1f, .2f, .35f, .5f, .7f).plus(settings.dimAmount).distinct().sorted(),
-            settings.dimAmount, { "${(it * 100).toInt()}%" }, { onSave(settings.copy(dimAmount = it)) }, { choice = null })
+            settings.dimAmount, { "${(it * 100).toInt()}%" }, { save(settings.copy(dimAmount = it)) }, { choice = null })
         null -> Unit
     }
     if (confirmClear) TvDialog("Clear photo selection?", onDismiss = { confirmClear = false }) {
         Text("Remove the selected photos and folder from Flick. The original files stay where they are.", style = MaterialTheme.typography.bodyMedium)
         TvSettingRow("Cancel", onClick = { confirmClear = false })
         TvSettingRow("Clear selection", icon = Icons.Default.Remove, onClick = {
-            onSave(settings.copy(folderUri = null, photos = emptyList()))
+            save(settings.copy(folderUri = null, photos = emptyList()))
             confirmClear = false
         })
     }
