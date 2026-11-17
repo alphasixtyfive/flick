@@ -21,6 +21,7 @@ internal class HaTransport(private val client: OkHttpClient) {
         body: String? = null,
         maximumBytes: Int = 256 * 1024
     ): String = suspendCancellableCoroutine { continuation ->
+        if (!continuation.isActive) return@suspendCancellableCoroutine
         val request = Request.Builder().url(credentials.url + path)
             .header("Authorization", "Bearer ${credentials.token}")
             .header("Accept", "application/json").apply {
@@ -28,6 +29,7 @@ internal class HaTransport(private val client: OkHttpClient) {
             }.build()
         val call = client.newCall(request)
         continuation.invokeOnCancellation { client.cancelAsync(call) }
+        if (!continuation.isActive) return@suspendCancellableCoroutine
         call.enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
                 if (continuation.isActive) continuation.resumeWithException(HaException("Home Assistant is unavailable"))

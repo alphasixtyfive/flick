@@ -11,6 +11,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
@@ -51,6 +54,18 @@ class UpdateTransportTest {
         assertTrue("OkHttp call was not cancelled", await(body.cancelled))
         assertTrue("Cancelled response was not closed", await(body.closed))
         assertTrue(request.isCancelled)
+    }
+
+    @Test fun alreadyCancelledCoroutineDoesNotEnqueueARequest() = runBlocking {
+        val started = AtomicInteger()
+        val client = client("".toResponseBody(), onStart = { started.incrementAndGet() })
+        val request = launch(start = CoroutineStart.UNDISPATCHED) {
+            currentCoroutineContext().cancel()
+            UpdateDownload(client).metadata(url)
+        }
+        request.join()
+        assertTrue(request.isCancelled)
+        assertEquals(0, started.get())
     }
 
     @Test fun timeoutRemainsCancellationAndClosesTheResponse() = runBlocking {
@@ -107,9 +122,10 @@ class UpdateTransportTest {
         assertTrue(await(body.closed))
     }
 
-    private fun client(body: ResponseBody, code: Int = 200, onCancel: () -> Unit = {}): OkHttpClient =
+    private fun client(body: ResponseBody, code: Int = 200, onCancel: () -> Unit = {}, onStart: () -> Unit = {}): OkHttpClient =
         OkHttpClient.Builder().followRedirects(false).eventListener(object : EventListener() {
             override fun canceled(call: Call) { onCancel() }
+            override fun callStart(call: Call) { onStart() }
         }).addInterceptor { chain ->
             Response.Builder().request(chain.request()).protocol(Protocol.HTTP_1_1).code(code).message("Test response")
                 .body(body).build()

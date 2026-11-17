@@ -58,12 +58,14 @@ class WeatherRepository {
     }
 
     private suspend fun read(url: String): JSONObject = suspendCancellableCoroutine { continuation ->
+        if (!continuation.isActive) return@suspendCancellableCoroutine
         if (closed.get()) {
             continuation.resumeWithException(IllegalStateException("Weather is closed"))
             return@suspendCancellableCoroutine
         }
         val call = client.newCall(Request.Builder().url(url).build())
         continuation.invokeOnCancellation { client.cancelAsync(call) }
+        if (!continuation.isActive) return@suspendCancellableCoroutine
         call.enqueue(object : Callback {
             override fun onFailure(call: Call, error: IOException) {
                 if (continuation.isActive) continuation.resumeWithException(IOException("Weather is unavailable"))

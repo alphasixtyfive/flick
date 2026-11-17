@@ -81,6 +81,7 @@ internal class UpdateDownload(
             .header("Accept", if (metadata) "application/vnd.github+json" else "application/octet-stream").build()
         val call = client.newCall(request)
         continuation.invokeOnCancellation { client.cancelAsync(call) }
+        if (!continuation.isActive) return@suspendCancellableCoroutine
         call.enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
                 if (continuation.isActive) continuation.resumeWithException(UpdateException("Could not reach GitHub. Check the connection and try again."))

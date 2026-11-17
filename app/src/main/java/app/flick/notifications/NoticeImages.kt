@@ -54,7 +54,9 @@ internal class NoticeImages {
     }
 
     private suspend fun read(call: Call): ByteArray? = suspendCancellableCoroutine { continuation ->
+        if (!continuation.isActive) return@suspendCancellableCoroutine
         continuation.invokeOnCancellation { client.cancelAsync(call) }
+        if (!continuation.isActive) return@suspendCancellableCoroutine
         call.enqueue(object : Callback {
             override fun onFailure(call: Call, error: IOException) {
                 if (continuation.isActive) continuation.resume(null)
