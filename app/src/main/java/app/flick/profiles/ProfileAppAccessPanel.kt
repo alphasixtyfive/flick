@@ -1,11 +1,12 @@
 package app.flick.profiles
 
+import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.*
 import androidx.compose.ui.graphics.Color
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import app.flick.apps.AppEntry
-import app.flick.ui.components.TvPanel
+import app.flick.ui.components.TvLazyPanel
 import app.flick.ui.components.TvSettingRow
 import app.flick.ui.theme.FlickColors
 
@@ -19,22 +20,33 @@ internal fun ProfileAppAccessPanel(
 ) {
     var saving by remember(profile.id) { mutableStateOf(emptySet<String>()) }
     var error by remember(profile.id) { mutableStateOf<String?>(null) }
-    TvPanel("Allowed apps", onBack = onBack) {
-        Text(error ?: if (saving.isEmpty()) "Changes save automatically." else "Saving changes…",
-            style = MaterialTheme.typography.bodySmall,
-            color = if (error == null) FlickColors.Secondary else Color(0xffffd5cd))
-        apps.forEach { app -> key(app.packageName) {
-            TvSettingRow(app.name, checked = app.packageName in profile.allowedApps, onClick = {
-                if (app.packageName !in saving) {
-                    saving = saving + app.packageName
-                    error = null
-                    onSetApp(profile, app.packageName, app.packageName !in profile.allowedApps) { result ->
-                        saving = saving - app.packageName
-                        error = result.exceptionOrNull()?.message?.take(160)
-                    }
-                }
-            })
-        } }
-        if (apps.isEmpty()) Text("No TV apps are installed.", style = MaterialTheme.typography.bodySmall)
+    val installed = remember(apps) { apps.mapTo(mutableSetOf()) { it.packageName } }
+    val uninstalled = profile.allowedApps.filterNot(installed::contains)
+    fun toggleApp(packageName: String) {
+        if (packageName in saving) return
+        saving = saving + packageName
+        error = null
+        onSetApp(profile, packageName, packageName !in profile.allowedApps) { result ->
+            saving = saving - packageName
+            error = result.exceptionOrNull()?.message?.take(160)
+        }
+    }
+    TvLazyPanel("Allowed apps", onBack = onBack) {
+        item(key = "status") {
+            Text(error ?: if (saving.isEmpty()) "Changes save automatically." else "Saving changes…",
+                style = MaterialTheme.typography.bodySmall,
+                color = if (error == null) FlickColors.Secondary else Color(0xffffd5cd))
+        }
+        items(apps, key = { "app:${it.packageName}" }) { app ->
+            TvSettingRow(app.name, checked = app.packageName in profile.allowedApps,
+                onClick = { toggleApp(app.packageName) })
+        }
+        items(uninstalled, key = { "app:$it" }) { packageName ->
+            TvSettingRow(packageName, detail = "Not installed", checked = true,
+                onClick = { toggleApp(packageName) })
+        }
+        if (apps.isEmpty()) item(key = "empty") {
+            Text("No TV apps are installed.", style = MaterialTheme.typography.bodySmall)
+        }
     }
 }

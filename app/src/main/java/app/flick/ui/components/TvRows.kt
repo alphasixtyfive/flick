@@ -24,7 +24,8 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.semantics.toggleableState
+import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.*
@@ -35,7 +36,10 @@ import app.flick.ui.theme.TvLayout
 fun TvSettingRow(title: String, detail: String = "", checked: Boolean? = null, icon: ImageVector? = null,
     modifier: Modifier = Modifier, onClick: () -> Unit) {
     TvListRow(title, detail, icon, modifier.semantics {
-        if (checked != null) { stateDescription = if (checked) "On" else "Off"; role = Role.Switch }
+        if (checked != null) {
+            role = Role.Switch
+            toggleableState = if (checked) ToggleableState.On else ToggleableState.Off
+        }
     }, onClick) { focused -> if (checked != null) NeutralSwitch(checked, focused) }
 }
 
