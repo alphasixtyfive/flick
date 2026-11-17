@@ -4,7 +4,10 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.ApplicationInfo
 import android.net.Uri
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 
 class AndroidCatalogue(private val context: Context) {
@@ -27,13 +30,19 @@ class AndroidCatalogue(private val context: Context) {
     }
 
     suspend fun continueItems(): List<ContinueItem> = withContext(Dispatchers.IO) {
+        val readContext = currentCoroutineContext()
+        readContext.ensureActive()
         val columns = arrayOf("_id", "package_name", "title", "poster_art_uri", "thumbnail_uri", "intent_uri",
             "last_playback_position_millis", "duration_millis")
-        runCatching {
+        try {
             context.contentResolver.query(Uri.parse("content://android.media.tv/watch_next_program"), columns, null, null,
                 "last_engagement_time_utc_millis DESC")?.use { cursor ->
                 buildList {
-                    while (cursor.moveToNext() && size < 30) {
+                    var inspected = 0
+                    while (size < 30 && inspected < 300) {
+                        readContext.ensureActive()
+                        if (!cursor.moveToNext()) break
+                        inspected++
                         val duration = cursor.getLong(7)
                         val artwork = cursor.getString(4)?.takeIf(String::isNotBlank) ?: cursor.getString(3)
                         val uri = cursor.getString(5) ?: continue
@@ -43,7 +52,8 @@ class AndroidCatalogue(private val context: Context) {
                     }
                 }
             } ?: emptyList()
-        }.getOrDefault(emptyList())
+        } catch (cancelled: CancellationException) { throw cancelled }
+        catch (_: Exception) { emptyList() }
     }
 
     fun launch(packageName: String) {
