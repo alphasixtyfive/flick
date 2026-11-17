@@ -55,7 +55,7 @@ class BackupRepository(context: Context) {
         try {
             val images = Images(directory, signal)
             val manifest = BackupManifest.create(settings, wallpaper, images::portable, { images.files.keys })
-            val file = File(directory, "Flick.flickbackup")
+            val file = File(directory, "Flick-backup.zip")
             file.outputStream().use { BackupArchive.write(it, manifest, images.files, signal::throwIfCanceled) }
             require(file.length() <= BackupArchive.MAX_ARCHIVE_BYTES) { "Backup is too large" }
             PreparedBackup(file, manifest.summary(folderAvailable(manifest.folderUri)), directory)

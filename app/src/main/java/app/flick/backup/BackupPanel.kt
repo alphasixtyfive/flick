@@ -26,7 +26,10 @@ fun BackupPanel(state: BackupState, onPrepare: () -> Unit, onSave: () -> Unit, o
             TvSettingRow("Restore", icon = Icons.Default.FileDownload, onClick = onChoose)
         } else {
             state.summary?.let { summary ->
-                Text("${summary.profileCount} profiles\n${summary.photoCount} wallpapers\n${summary.embeddedImages} saved images",
+                val profiles = if (summary.profileCount == 1) "profile" else "profiles"
+                val photos = if (summary.photoCount == 1) "wallpaper" else "wallpapers"
+                val images = if (summary.embeddedImages == 1) "saved image" else "saved images"
+                Text("${summary.profileCount} $profiles\n${summary.photoCount} $photos\n${summary.embeddedImages} $images",
                     style = MaterialTheme.typography.bodyMedium)
                 summary.notices.forEach { Text(it, style = MaterialTheme.typography.bodySmall) }
             }

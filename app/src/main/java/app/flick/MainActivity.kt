@@ -206,7 +206,7 @@ class MainActivity : ComponentActivity() {
         removeTheme = model::removeTheme,
         prepareBackup = model::prepareBackup,
         saveBackup = {
-            if (model.canManage()) runCatching { backupWriter.launch("Flick.flickbackup") }
+            if (model.canManage()) runCatching { backupWriter.launch("Flick-backup.zip") }
                 .onFailure { model.message("No file picker is installed") }
         },
         chooseBackup = {

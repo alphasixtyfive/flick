@@ -161,7 +161,7 @@ Themes change menus and focus colours; wallpapers and layout remain separate. Se
 
 ## Backup & restore
 
-Open Settings → Device → Backup & restore. Back up creates one `.flickbackup` file with launcher
+Open Settings → Device → Backup & restore. Back up creates one backup ZIP file with launcher
 preferences, profiles and accessible individual photos. Review the summary before choosing where to save it.
 Passwords, parent PIN verifiers, Home Assistant credentials and pairing are excluded.
 

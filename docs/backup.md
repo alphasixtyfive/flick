@@ -1,6 +1,6 @@
 # Backup and restore
 
-Open **Settings → Device → Backup & restore**. Save a `.flickbackup` file using Android's file picker. Choose that file on another TV, review the contents, then restore. Older Flick setup JSON files can be opened from the same screen.
+Open **Settings → Device → Backup & restore**. Save a backup ZIP file using Android's file picker. Choose that file on another TV, review the contents, then restore. Older Flick setup JSON files can be opened from the same screen.
 
 The backup includes launcher preferences, themes, profiles, app choices, weather location, individual wallpapers and profile pictures. Local images are copied into the file; restoring does not depend on the original file picker permission. Built-in wallpapers stay built-in. Online images remain links and are not downloaded during backup.
 
