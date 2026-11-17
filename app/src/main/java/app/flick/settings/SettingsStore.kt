@@ -13,7 +13,7 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 
-class SettingsStore(context: Context) {
+class SettingsStore(context: Context, private val startupRecoveryFailed: Boolean = false) {
     private val preferences = context.getSharedPreferences("flick_native", Context.MODE_PRIVATE)
     private val installation = context.getSharedPreferences("flick_installation", Context.MODE_PRIVATE)
     private val previouslyInitialized = installation.contains("initialized") ||
@@ -26,6 +26,7 @@ class SettingsStore(context: Context) {
 
     private fun load(): LauncherSettings {
         return runCatching {
+            check(!startupRecoveryFailed) { "Restore recovery could not finish" }
             val restored = restoreSettings(preferences.getString("settings", null), previouslyInitialized)
             check(!restored.requiresRecovery) { "Stored settings need recovery" }
             if (!preferences.contains("settings")) {
@@ -50,6 +51,16 @@ class SettingsStore(context: Context) {
     ).any { (store, key) -> context.getSharedPreferences(store, Context.MODE_PRIVATE).contains(key) }
 
     suspend fun save(settings: LauncherSettings) = update { settings }
+
+    /** Reload only after a local transaction rollback, before restoring profile authority. */
+    internal suspend fun reloadAfterRollback() = mutex.withLock {
+        withContext(Dispatchers.IO) { mutable.value = load() }
+    }
+
+    internal fun requireRecovery() {
+        mutableRecovery.value = true
+        mutable.value = recoverySettings()
+    }
 
     suspend fun update(transform: (LauncherSettings) -> LauncherSettings) = mutex.withLock {
         val requested = transform(mutable.value)

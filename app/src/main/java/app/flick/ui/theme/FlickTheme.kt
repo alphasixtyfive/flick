@@ -18,6 +18,9 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Typography
 import androidx.tv.material3.darkColorScheme
 import app.flick.R
+import app.flick.themes.AppearanceSettings
+import app.flick.themes.ThemeCatalog
+import app.flick.themes.ThemePalette
 
 @OptIn(ExperimentalTextApi::class)
 private val FlickFont = FontFamily(
@@ -27,28 +30,28 @@ private val FlickFont = FontFamily(
 )
 
 object FlickColors {
-    val Background = Color(0xFF111720)
-    val Surface = Color(0xFF1B232E)
-    val SurfaceRaised = Color(0xFF252F3D)
-    val Foreground = Color(0xFFEDF0F5)
-    val Secondary = Color(0xFFB7BFCA)
-    val FocusBackground = Foreground
-    val FocusForeground = Color(0xFF172232)
+    val Background: Color @Composable get() = MaterialTheme.colorScheme.background
+    val Surface: Color @Composable get() = MaterialTheme.colorScheme.surface
+    val SurfaceRaised: Color @Composable get() = MaterialTheme.colorScheme.surfaceVariant
+    val Foreground: Color @Composable get() = MaterialTheme.colorScheme.onBackground
+    val Secondary: Color @Composable get() = MaterialTheme.colorScheme.onSurfaceVariant
+    val FocusBackground: Color @Composable get() = MaterialTheme.colorScheme.inverseSurface
+    val FocusForeground: Color @Composable get() = MaterialTheme.colorScheme.inverseOnSurface
 }
 
-private val Colors = darkColorScheme(
-    primary = FlickColors.Foreground,
-    onPrimary = FlickColors.FocusForeground,
-    secondary = FlickColors.Secondary,
-    onSecondary = FlickColors.FocusForeground,
-    background = FlickColors.Background,
-    onBackground = FlickColors.Foreground,
-    surface = FlickColors.Surface,
-    onSurface = FlickColors.Foreground,
-    surfaceVariant = FlickColors.SurfaceRaised,
-    onSurfaceVariant = FlickColors.Secondary,
-    inverseSurface = FlickColors.FocusBackground,
-    inverseOnSurface = FlickColors.FocusForeground,
+private fun ThemePalette.colorScheme() = darkColorScheme(
+    primary = Color(focusBackground),
+    onPrimary = Color(focusForeground),
+    secondary = Color(secondary),
+    onSecondary = Color(focusForeground),
+    background = Color(background),
+    onBackground = Color(foreground),
+    surface = Color(surface),
+    onSurface = Color(foreground),
+    surfaceVariant = Color(surfaceRaised),
+    onSurfaceVariant = Color(secondary),
+    inverseSurface = Color(focusBackground),
+    inverseOnSurface = Color(focusForeground),
     surfaceTint = Color.Transparent,
 )
 
@@ -90,7 +93,8 @@ internal fun homeMetadataStyle(scale: Float): TextStyle = MaterialTheme.typograp
 )
 
 @Composable
-fun FlickTheme(largeText: Boolean = false, content: @Composable () -> Unit) {
+fun FlickTheme(largeText: Boolean = false, appearance: AppearanceSettings = AppearanceSettings(), content: @Composable () -> Unit) {
+    val colors = remember(appearance) { ThemeCatalog.resolve(appearance).colors.colorScheme() }
     val typography = remember(largeText) {
         if (!largeText) Type else Type.copy(
             titleLarge = Type.titleLarge.larger(), titleMedium = Type.titleMedium.larger(), titleSmall = Type.titleSmall.larger(),
@@ -98,7 +102,7 @@ fun FlickTheme(largeText: Boolean = false, content: @Composable () -> Unit) {
             labelLarge = Type.labelLarge.larger(), labelMedium = Type.labelMedium.larger(), labelSmall = Type.labelSmall.larger(),
         )
     }
-    MaterialTheme(colorScheme = Colors, typography = typography) {
+    MaterialTheme(colorScheme = colors, typography = typography) {
         CompositionLocalProvider(LocalContentColor provides FlickColors.Foreground, content = content)
     }
 }

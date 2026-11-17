@@ -45,6 +45,8 @@ fun NativeSettingsPanel(
     onProfiles: () -> Unit,
     onHomeAssistant: () -> Unit,
     onUpdates: () -> Unit,
+    onTheme: () -> Unit,
+    onBackup: () -> Unit,
 ) {
     val settings = state.settings
     var choice by remember { mutableStateOf<SettingChoice?>(null) }
@@ -65,6 +67,8 @@ fun NativeSettingsPanel(
                 TvSettingRow("About", icon = Icons.Default.Info, onClick = { onPageChange(SettingsPage.About) })
             }
             SettingsPage.Home -> {
+                TvSettingRow("Theme", detail = app.flick.themes.ThemeCatalog.resolve(settings.appearance).name,
+                    icon = Icons.Default.Palette, onClick = onTheme)
                 TvSettingRow("App tiles", detail = if (settings.compactTiles) "Compact" else "Comfortable", icon = Icons.Default.ViewModule,
                     onClick = { choice = SettingChoice.Tiles })
                 TvSettingRow("Text size", detail = if (settings.largeText) "Larger" else "Standard", icon = Icons.Default.TextFields,
@@ -106,7 +110,7 @@ fun NativeSettingsPanel(
             SettingsPage.Device -> {
                 TvSettingRow("Screensaver", detail = "Idle videos and photos", icon = Icons.Default.Landscape,
                     onClick = actions.openScreensaverSettings)
-                TvSettingRow("Import setup", detail = "Profiles and launcher preferences", icon = Icons.Default.FileOpen, onClick = actions.importSetup)
+                TvSettingRow("Backup & restore", icon = Icons.Default.SettingsBackupRestore, onClick = onBackup)
                 TvSettingRow("Android settings", icon = Icons.Default.Tv, onClick = actions.openAndroidSettings)
             }
             SettingsPage.About -> {
@@ -120,7 +124,7 @@ fun NativeSettingsPanel(
                         style = MaterialTheme.typography.bodySmall, color = FlickColors.Secondary,
                         textAlign = TextAlign.Center)
                 }
-                TvSettingRow("Check for updates", detail = "GitHub releases", icon = Icons.Default.SystemUpdate,
+                TvSettingRow("Updates", icon = Icons.Default.SystemUpdate,
                     onClick = onUpdates)
                 TvSettingRow("Developer", detail = "@alphasixtyfive", icon = Icons.Default.Person,
                     onClick = { actions.openProjectLink(ProjectLinks.DEVELOPER) })

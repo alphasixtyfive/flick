@@ -3,7 +3,7 @@ package app.flick.integration
 import java.net.URI
 import org.json.JSONArray
 import org.json.JSONObject
-import org.json.JSONTokener
+import app.flick.json.JsonStructure
 
 /** Limits apply before a JSON library can recurse or allocate large collections. */
 object BridgeProtocol {
@@ -15,7 +15,7 @@ object BridgeProtocol {
 
     fun frame(text: String): JSONObject {
         require(text.length <= MAX_FRAME_BYTES && text.toByteArray(Charsets.UTF_8).size <= MAX_FRAME_BYTES) { "Integration message is too large" }
-        JsonShape(text).check()
+        JsonStructure(text).check()
         return JSONObject(text)
     }
 
@@ -38,9 +38,9 @@ object BridgeProtocol {
 
     fun validateData(type: BridgeCommandType, data: JSONObject) {
         when (type) {
-            BridgeCommandType.GetStatus, BridgeCommandType.ListApps, BridgeCommandType.ListProfiles,
+            BridgeCommandType.GetStatus, BridgeCommandType.ListApps, BridgeCommandType.ListProfiles, BridgeCommandType.ListThemes,
             BridgeCommandType.NextWallpaper -> keys(data, emptySet())
-            BridgeCommandType.DeleteProfile, BridgeCommandType.SelectProfile -> {
+            BridgeCommandType.DeleteProfile, BridgeCommandType.SelectProfile, BridgeCommandType.SetTheme -> {
                 keys(data, setOf("id")); require(profileId.matches(string(data, "id", 64))) { "Invalid profile ID" }
             }
             BridgeCommandType.SetProfile -> {
@@ -124,67 +124,4 @@ object BridgeProtocol {
         require(value.length <= 4096 && uri != null && uri.scheme in setOf("http", "https") && !uri.host.isNullOrBlank() &&
             uri.rawUserInfo == null && uri.rawFragment == null) { "Use an http or https image URL" }
     }
-}
-
-/** Structural validation avoids the permissive extensions accepted by Android's JSONTokener. */
-private class JsonShape(private val text: String) {
-    private var position = 0
-    private var nodes = 0
-    fun check() { whitespace(); require(peek() == '{') { "Expected an integration object" }; value(0); whitespace(); require(position == text.length) { "Invalid integration JSON" } }
-    private fun value(depth: Int) {
-        require(depth <= 12 && ++nodes <= 12_000) { "Integration structure is too large" }
-        whitespace()
-        when (peek()) {
-            '{' -> {
-                position++; whitespace(); val keys = mutableSetOf<String>()
-                if (peek() == '}') { position++; return }
-                while (true) {
-                    whitespace(); val key = quoted()
-                    require(keys.add(key) && keys.size <= 64) { "Invalid integration fields" }
-                    whitespace(); expect(':'); value(depth + 1); whitespace()
-                    if (peek() == '}') { position++; break }
-                    expect(',')
-                }
-            }
-            '[' -> {
-                position++; whitespace(); var count = 0
-                if (peek() == ']') { position++; return }
-                while (true) {
-                    require(++count <= 512) { "Integration list is too large" }; value(depth + 1); whitespace()
-                    if (peek() == ']') { position++; break }
-                    expect(',')
-                }
-            }
-            '"' -> quoted()
-            't' -> literal("true")
-            'f' -> literal("false")
-            'n' -> literal("null")
-            else -> {
-                val number = Regex("-?(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?(?:[eE][+-]?[0-9]+)?").find(text, position)
-                require(number != null && number.range.first == position && number.value.length <= 64) { "Invalid integration JSON" }
-                position += number.value.length
-            }
-        }
-    }
-    private fun quoted(): String {
-        val start = position; expect('"')
-        while (position < text.length) {
-            val character = text[position++]
-            require(character.code >= 32) { "Invalid integration JSON" }
-            if (character == '"') {
-                require(position - start <= 8192) { "Integration text is too large" }
-                return JSONTokener(text.substring(start, position)).nextValue() as String
-            }
-            if (character == '\\') {
-                val escaped = peek(); position++
-                if (escaped == 'u') repeat(4) { require(peek() in "0123456789abcdefABCDEF") { "Invalid integration JSON" }; position++ }
-                else require(escaped in "\"\\/bfnrt") { "Invalid integration JSON" }
-            }
-        }
-        error("Invalid integration JSON")
-    }
-    private fun literal(value: String) { require(text.startsWith(value, position)) { "Invalid integration JSON" }; position += value.length }
-    private fun whitespace() { while (position < text.length && text[position] in " \t\r\n") position++ }
-    private fun peek() = text.getOrNull(position) ?: '\u0000'
-    private fun expect(value: Char) { require(peek() == value) { "Invalid integration JSON" }; position++ }
 }

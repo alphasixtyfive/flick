@@ -21,6 +21,7 @@ import app.flick.ui.components.TvDialog
 import app.flick.ui.components.TvPanel
 import app.flick.ui.components.TvSettingRow
 import app.flick.ui.components.TvChoiceRow
+import app.flick.ui.theme.FlickColors
 
 private enum class ProfileEditOperation { Save, Delete }
 // Retries must remain distinct even when they report the same error.
@@ -178,7 +179,7 @@ internal fun ProfileEditor(profile: Profile, profiles: List<Profile>, apps: List
             })
         localError?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = Color(0xffffd5cd)) }
         if (child) {
-            Text("Set child accounts and content limits inside each media app too.", style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = .7f))
+            Text("Set child accounts and content limits inside each media app too.", style = MaterialTheme.typography.bodySmall, color = FlickColors.Secondary)
             if (existing && currentProfile.child) TvSettingRow("Allowed apps", icon = Icons.Default.Apps,
                 detail = pluralStringResource(R.plurals.allowed_apps_count, currentProfile.allowedApps.size, currentProfile.allowedApps.size),
                 onClick = { if (pending == null) editingApps = true })

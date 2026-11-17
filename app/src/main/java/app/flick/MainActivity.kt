@@ -1,6 +1,5 @@
 package app.flick
 
-import android.app.AlertDialog
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -22,7 +21,8 @@ import androidx.lifecycle.lifecycleScope
 import app.flick.home.FlickScreen
 import app.flick.home.HomeActions
 import app.flick.profiles.Profile
-import app.flick.settings.SetupImport
+import app.flick.themes.ThemeCodec
+import app.flick.themes.ThemeDefinition
 import app.flick.settings.ProjectLinks
 import app.flick.ui.theme.FlickTheme
 import app.flick.ui.components.LocalNavigationFeedback
@@ -66,22 +66,26 @@ class MainActivity : ComponentActivity() {
     private val wallpaperPicker = activityResultRegistry.register("wallpaper.photos", this, ActivityResultContracts.OpenMultipleDocuments()) { uris ->
         if (uris.isNotEmpty() && model.canManage()) model.addWallpaperPhotos(uris.map(Uri::toString))
     }
-    private val setupPicker = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        if (uri != null && model.canManage()) lifecycleScope.launch {
-            try {
-                val raw = withContext(Dispatchers.IO) {
-                    contentResolver.openInputStream(uri)?.use(SetupImport::read)
-                        ?: error("Setup file could not be read")
-                }
-                confirmImport(raw)
-            } catch (cancelled: CancellationException) { throw cancelled }
-            catch (_: Exception) { model.message("Setup file could not be read") }
-        }
+    private var exportingTheme: ThemeDefinition? = null
+    private val themePicker = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null && model.canManage()) model.importTheme(uri)
+    }
+    private val themeWriter = registerForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
+        val theme = exportingTheme
+        exportingTheme = null
+        if (uri != null && theme != null && model.canManage()) model.exportTheme(theme, uri)
+    }
+    private val backupPicker = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null && model.canManage()) model.readBackup(uri)
+    }
+    private val backupWriter = registerForActivityResult(ActivityResultContracts.CreateDocument("application/zip")) { uri ->
+        model.saveBackup(uri)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         model = ViewModelProvider(this)[LauncherViewModel::class.java]
+        exportingTheme = savedInstanceState?.getString("exportingTheme")?.let { runCatching { ThemeCodec.read(it) }.getOrNull() }
         photoProfileId = savedInstanceState?.getString("photoProfileId")
         choosingProfileWallpaper = savedInstanceState?.getBoolean("choosingProfileWallpaper") ?: false
         setContent {
@@ -96,7 +100,7 @@ class MainActivity : ComponentActivity() {
                 }
             }
             CompositionLocalProvider(LocalNavigationFeedback provides feedback) {
-                FlickTheme(largeText = state.settings.largeText) { FlickScreen(state, actions) }
+                FlickTheme(largeText = state.settings.largeText, appearance = state.settings.appearance) { FlickScreen(state, actions) }
             }
         }
         readSetupIntent(intent)
@@ -110,6 +114,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
+        exportingTheme?.let { outState.putString("exportingTheme", ThemeCodec.write(it)) }
         photoProfileId?.let { outState.putString("photoProfileId", it) }
         outState.putBoolean("choosingProfileWallpaper", choosingProfileWallpaper)
         super.onSaveInstanceState(outState)
@@ -186,10 +191,30 @@ class MainActivity : ComponentActivity() {
         saveHomeControls = model::saveHomeControls,
         openAndroidSettings = { if (model.canManage()) openAndroid(Intent(Settings.ACTION_SETTINGS)) },
         openScreensaverSettings = { if (model.canManage()) openAndroid(Intent(Settings.ACTION_DREAM_SETTINGS)) },
-        importSetup = {
-            if (model.canManage()) runCatching { setupPicker.launch(arrayOf("application/json", "text/plain")) }
+        importTheme = {
+            if (model.canManage()) runCatching { themePicker.launch(arrayOf("application/json", "text/plain")) }
                 .onFailure { model.message("No file picker is installed") }
         },
+        exportTheme = { theme ->
+            if (model.canManage()) {
+                exportingTheme = theme
+                runCatching { themeWriter.launch("Flick.theme.json") }
+                    .onFailure { exportingTheme = null; model.message("No file picker is installed") }
+            }
+        },
+        selectTheme = model::selectTheme,
+        removeTheme = model::removeTheme,
+        prepareBackup = model::prepareBackup,
+        saveBackup = {
+            if (model.canManage()) runCatching { backupWriter.launch("Flick.flickbackup") }
+                .onFailure { model.message("No file picker is installed") }
+        },
+        chooseBackup = {
+            if (model.canManage()) runCatching { backupPicker.launch(arrayOf("*/*")) }
+                .onFailure { model.message("No file picker is installed") }
+        },
+        restoreBackup = model::restoreBackup,
+        discardBackup = model::discardBackup,
         dismissMessage = model::dismissMessage,
         saveProfile = model::saveProfile,
         setProfileApp = model::setProfileApp,
@@ -226,34 +251,8 @@ class MainActivity : ComponentActivity() {
     private fun readSetupIntent(intent: Intent?) {
         val setup = intent?.getStringExtra("flick.setup") ?: return
         intent.removeExtra("flick.setup")
-        confirmImport(setup)
-    }
-
-    private fun confirmImport(raw: String) {
-        if (!model.canManage()) { model.message("Choose an adult profile before importing setup"); return }
-        lifecycleScope.launch {
-            val parsed = try { withContext(Dispatchers.Default) { SetupImport.parse(raw) } }
-                catch (cancelled: CancellationException) { throw cancelled }
-                catch (_: Exception) { model.message("This setup file is invalid"); return@launch }
-            if (!model.canManage()) { model.message("Choose an adult profile before importing setup"); return@launch }
-            showImportConfirmation(parsed)
-        }
-    }
-
-    private fun showImportConfirmation(parsed: SetupImport) {
-        AlertDialog.Builder(this).setTitle("Import Flick setup?")
-            .setMessage("Replace settings and ${parsed.settings.profiles.size} profiles? Existing setup stays unchanged until you choose Import.")
-            .setNegativeButton("Cancel", null).setPositiveButton("Import") { _, _ ->
-                lifecycleScope.launch {
-                    try {
-                        val homeAssistant = parsed.homeAssistant
-                        model.importSettings(parsed.settings, parsed.wallpaper, homeAssistant?.url, homeAssistant?.token,
-                            homeAssistant?.controls.orEmpty())
-                        model.message("Setup imported")
-                    } catch (cancelled: CancellationException) { throw cancelled }
-                    catch (_: Exception) { model.message("Setup was not fully imported. Check the settings before retrying.") }
-                }
-            }.show()
+        if (model.canManage()) model.readLegacyBackup(setup)
+        else model.message("Choose an adult profile before restoring setup")
     }
 
     private companion object { const val READ_TV_LISTINGS = "android.permission.READ_TV_LISTINGS" }

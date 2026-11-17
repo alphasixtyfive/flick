@@ -35,8 +35,11 @@ import java.util.concurrent.ConcurrentHashMap
 
 /** Process-owned features shared by the home screen and its optional background connection. */
 class FlickRuntime(context: Context) {
+    internal val backupTransactions = BackupTransactions(context.applicationContext)
+    private val restoreRecovered = backupTransactions.recoverBeforeStartup()
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
-    val store = SettingsStore(context)
+    val store = SettingsStore(context, startupRecoveryFailed = !restoreRecovered)
+    internal val backups by lazy { LauncherBackups(context.applicationContext, this) }
     internal val profileSession = ProfileSession(store.state.value)
     val navigationSounds = NavigationSounds(context.applicationContext)
     val profiles = ProfileSecurity(context)

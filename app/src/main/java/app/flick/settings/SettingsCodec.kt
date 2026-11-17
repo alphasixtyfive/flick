@@ -4,6 +4,7 @@ import app.flick.profiles.Profile
 import app.flick.wallpaper.validWallpaperPhotoUri
 import app.flick.profiles.ProfileStartup
 import app.flick.weather.WeatherLocation
+import app.flick.themes.ThemeCodec
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -30,6 +31,7 @@ object SettingsCodec {
             favorites = field(before.favorites, requested.favorites, current.favorites),
             removedContinue = field(before.removedContinue, requested.removedContinue, current.removedContinue),
             profileStartup = field(before.profileStartup, requested.profileStartup, current.profileStartup),
+            appearance = field(before.appearance, requested.appearance, current.appearance),
         )
     }
 
@@ -105,6 +107,7 @@ object SettingsCodec {
             removedContinue = json.optJSONArray("removedContinue").strings(250).filter { it.length <= 512 }.toSet(),
             profiles = profiles, activeProfileId = active,
             profileStartup = profileStartup,
+            appearance = ThemeCodec.readStored(json.optJSONObject("appearance")),
         )
     }
 
@@ -120,6 +123,7 @@ object SettingsCodec {
         put("removedContinue", JSONArray(settings.removedContinue.toList()))
         put("activeProfileId", settings.activeProfileId)
         settings.profileStartup?.let { put("profileStartup", it.name) }
+        put("appearance", ThemeCodec.writeStored(settings.appearance))
         put("profiles", JSONArray(settings.profiles.map { p -> JSONObject().put("id", p.id).put("name", p.name)
             .put("child", p.child).put("avatar", p.avatar).put("allowedApps", JSONArray(p.allowedApps))
             .put("pinSalt", p.pinSalt).put("pinHash", p.pinHash).put("wallpaperUri", p.wallpaperUri)

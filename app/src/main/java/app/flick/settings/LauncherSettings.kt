@@ -3,6 +3,7 @@ package app.flick.settings
 import app.flick.profiles.Profile
 import app.flick.profiles.ProfileStartup
 import app.flick.weather.WeatherLocation
+import app.flick.themes.AppearanceSettings
 
 enum class NavigationSound { Soft, System, Off }
 
@@ -15,4 +16,5 @@ data class LauncherSettings(
     val favorites: List<String>? = null, val removedContinue: Set<String> = emptySet(),
     val profiles: List<Profile> = listOf(Profile("home", "Home")), val activeProfileId: String = "home",
     val profileStartup: ProfileStartup? = null,
+    val appearance: AppearanceSettings = AppearanceSettings(),
 )

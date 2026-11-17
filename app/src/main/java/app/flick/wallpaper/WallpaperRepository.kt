@@ -22,6 +22,7 @@ import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
@@ -61,6 +62,32 @@ class WallpaperRepository(context: Context, scope: CoroutineScope) {
 
     val settings: StateFlow<WallpaperSettings> = mutableSettings.asStateFlow()
     val current: StateFlow<WallpaperPhoto?> = mutableCurrent.asStateFlow()
+
+    suspend fun awaitLoaded() { loaded.await() }
+
+    /** Restore already-validated local settings without querying an external photo provider. */
+    internal suspend fun restoreLocal(value: WallpaperSettings) {
+        loaded.await()
+        folderRefresh?.cancelAndJoin()
+        changes.withLock {
+            saves.incrementAndGet()
+            val clean = validate(value)
+            persist(clean, if (clean.folderUri == settings.value.folderUri) folderCache else emptyList())
+        }
+    }
+
+    internal suspend fun reloadAfterRollback() {
+        loaded.await()
+        folderRefresh?.cancelAndJoin()
+        changes.withLock {
+            saves.incrementAndGet()
+            withContext(Dispatchers.IO) {
+                val value = readSettings()
+                folderCache = readFolderSnapshot(value.folderUri)
+                publish(value, folderCache)
+            }
+        }
+    }
 
     private val loaded = worker.async(start = CoroutineStart.LAZY) {
         changes.withLock {

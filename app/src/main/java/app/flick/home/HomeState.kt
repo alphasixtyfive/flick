@@ -17,6 +17,8 @@ import app.flick.integration.BridgeState
 import app.flick.notifications.NotificationState
 import app.flick.BuildConfig
 import app.flick.updates.UpdateState
+import app.flick.backup.BackupState
+import app.flick.themes.ThemeDefinition
 
 /** Immutable screen input. Native repositories remain responsible for authorization and I/O. */
 data class HomeState(
@@ -45,6 +47,7 @@ data class HomeState(
     val profileErrorTarget: String? = null,
     val homeRequestVersion: Int = 0,
     val update: UpdateState = UpdateState(currentVersion = BuildConfig.VERSION_NAME),
+    val backup: BackupState = BackupState(),
 ) {
     val displayedWallpaperUri: String?
         get() = HomePolicy.profile(settings).wallpaperUri ?: wallpaperUri
@@ -90,7 +93,15 @@ data class HomeActions(
     val saveHomeControls: (List<HaControlSpec>, (Result<Unit>) -> Unit) -> Unit,
     val openAndroidSettings: () -> Unit,
     val openScreensaverSettings: () -> Unit,
-    val importSetup: () -> Unit,
+    val importTheme: () -> Unit,
+    val exportTheme: (ThemeDefinition) -> Unit,
+    val selectTheme: (String) -> Unit,
+    val removeTheme: (String) -> Unit,
+    val prepareBackup: () -> Unit,
+    val saveBackup: () -> Unit,
+    val chooseBackup: () -> Unit,
+    val restoreBackup: (String?, (Result<Unit>) -> Unit) -> Unit,
+    val discardBackup: () -> Unit,
     val dismissMessage: () -> Unit,
     val showMessage: (String) -> Unit,
     val openRecoverySettings: () -> Unit,

@@ -153,13 +153,23 @@ Android can restore an enabled, paired connection after process loss. After forc
 vendor power-management shutdown, open Flick again. Connection off pauses notifications; Unpair TV
 removes pairing. Ordinary light controls stay configured.
 
-## Import setup
+## Themes
 
-Settings → Device → Import setup reads a JSON document and asks for confirmation before applying it.
-The format has a top-level `settings` object and optional `wallpaper` and `homeAssistant` objects.
-Keep setup files private: they can contain credentials, PIN verifiers and private photo links.
-Import saves each feature's configuration separately. On a different device, select photo folders
-again to grant access.
+Open Settings → Home screen → Theme. Choose Midnight, Graphite or Warm; the change applies immediately.
+Import a theme JSON to add another colour palette, or export the selected theme to edit it elsewhere.
+Themes change menus and focus colours; wallpapers and layout remain separate. See [theme format](docs/themes.md).
+
+## Backup & restore
+
+Open Settings → Device → Backup & restore. Back up creates one `.flickbackup` file with launcher
+preferences, profiles and accessible individual photos. Review the summary before choosing where to save it.
+Passwords, parent PIN verifiers, Home Assistant credentials and pairing are excluded.
+
+Restore previews the contents before replacing your launcher setup. Existing adult profiles keep their
+local PINs; restoring protected profiles onto another TV asks for a new four-digit parent PIN. The TV's
+Home Assistant connection and room controls stay unchanged. Photo folders may need to be selected again.
+Older setup JSON is accepted through the same restore preview; its connection and PIN fields are ignored.
+See [backup format and limits](docs/backup.md).
 
 For a failed photo or network connection, adjust that feature in Settings. If stored launcher settings
 cannot be read, Flick opens a restricted recovery screen. Use Android app settings to clear Flick's

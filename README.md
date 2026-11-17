@@ -28,9 +28,13 @@ Android 8.0 or later.
 - Photo slideshows from selected pictures, document folders or image URLs.
 - Nine built-in wallpapers, with offline previews and a separate [4K download collection](wallpapers/).
 - Clock, weather, navigation sounds and configurable home-screen controls.
+- Three colour themes, with simple JSON import and export.
+- Portable backups for profiles, preferences and local photos.
 - Home Assistant lights, switches, scenes and device status.
-- Optional TV pairing for notifications and remote profile/wallpaper management.
+- Optional TV pairing for notifications and remote profile, wallpaper and theme management.
 - Check for GitHub updates in Settings, then confirm installation through Android.
+
+See [themes](docs/themes.md) and [backup & restore](docs/backup.md) for details.
 
 ## Get started
 

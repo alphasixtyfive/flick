@@ -19,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
@@ -99,11 +100,11 @@ private fun NeutralSwitch(checked: Boolean, focused: Boolean) {
     val position by animateFloatAsState(if (checked) 1f else 0f, tween(140), label = "Switch position")
     val track = when {
         checked && focused -> FlickColors.FocusForeground
-        checked -> FlickColors.Foreground
-        focused -> Color(0xFFAAB5C2)
-        else -> Color(0xFF586473)
+        checked -> FlickColors.FocusBackground
+        focused -> lerp(FlickColors.FocusBackground, FlickColors.FocusForeground, .3f)
+        else -> lerp(FlickColors.SurfaceRaised, FlickColors.Foreground, .3f)
     }
-    val thumb = if (checked == focused) FlickColors.Foreground else FlickColors.FocusForeground
+    val thumb = if (checked == focused) FlickColors.FocusBackground else FlickColors.FocusForeground
     Canvas(Modifier.width(36.dp).height(20.dp)) {
         drawRoundRect(track, cornerRadius = CornerRadius(size.height / 2))
         val radius = 6.dp.toPx()

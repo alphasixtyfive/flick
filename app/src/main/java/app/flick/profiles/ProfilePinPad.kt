@@ -42,13 +42,19 @@ private data class PinCompletion(val attempt: Int, val result: Result<Unit>)
 @Composable
 internal fun ProfilePin(profile: Profile, error: String?, onBack: () -> Unit, onSuccess: () -> Unit,
     onConfirm: (String, (Result<Unit>) -> Unit) -> Unit) {
-    var input by remember(profile.id) { mutableStateOf(ProfilePinInput()) }
-    var inputError by remember(profile.id) { mutableStateOf(error) }
-    var pending by remember(profile.id) { mutableStateOf(false) }
-    var attempt by remember(profile.id) { mutableIntStateOf(0) }
-    var completion by remember(profile.id) { mutableStateOf<PinCompletion?>(null) }
-    val numberPress = remember(profile.id) { RemotePress() }
-    val initialFocus = remember(profile.id) { FocusRequester() }
+    FourDigitPin("${profile.name}’s PIN", profile.id, error, onBack, onSuccess, onConfirm)
+}
+
+@Composable
+internal fun FourDigitPin(title: String, entryKey: String, error: String?, onBack: () -> Unit, onSuccess: () -> Unit,
+    onConfirm: (String, (Result<Unit>) -> Unit) -> Unit) {
+    var input by remember(entryKey) { mutableStateOf(ProfilePinInput()) }
+    var inputError by remember(entryKey) { mutableStateOf(error) }
+    var pending by remember(entryKey) { mutableStateOf(false) }
+    var attempt by remember(entryKey) { mutableIntStateOf(0) }
+    var completion by remember(entryKey) { mutableStateOf<PinCompletion?>(null) }
+    val numberPress = remember(entryKey) { RemotePress() }
+    val initialFocus = remember(entryKey) { FocusRequester() }
 
     fun delete() {
         if (!pending) { input = input.delete(); inputError = null }
@@ -71,7 +77,7 @@ internal fun ProfilePin(profile: Profile, error: String?, onBack: () -> Unit, on
         }
     }
 
-    TvDialog("${profile.name}’s PIN", onDismiss = onBack, width = 300.dp, requestInitialFocus = false) {
+    TvDialog(title, onDismiss = onBack, width = 300.dp, requestInitialFocus = false) {
         // This owner belongs to the dialog window, so an Activity focus change cannot revive a held key.
         val windowFocused = LocalWindowInfo.current.isWindowFocused
         val lifecycle = LocalLifecycleOwner.current.lifecycle
@@ -84,7 +90,7 @@ internal fun ProfilePin(profile: Profile, error: String?, onBack: () -> Unit, on
             lifecycle.addObserver(observer)
             onDispose { lifecycle.removeObserver(observer); numberPress.cancel() }
         }
-        LaunchedEffect(profile.id, windowFocused) {
+        LaunchedEffect(entryKey, windowFocused) {
             if (windowFocused) initialFocus.requestFocus() else numberPress.cancel()
         }
         LaunchedEffect(completion) {

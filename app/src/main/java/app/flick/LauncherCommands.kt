@@ -9,6 +9,7 @@ import app.flick.notifications.NoticeAction
 import app.flick.notifications.TvNotice
 import app.flick.profiles.Profile
 import app.flick.profiles.ProfileSecurity
+import app.flick.themes.ThemeCatalog
 import app.flick.wallpaper.WallpaperPhoto
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancelAndJoin
@@ -28,7 +29,7 @@ internal class LauncherCommands(private val runtime: FlickRuntime) {
         return JSONObject().put("version", BuildConfig.VERSION_NAME)
             .put("profile", publicProfile(profile, details = false)).put("profiles", publicProfiles(details = false))
             .put("capabilities", JSONArray(buildList {
-                add("profiles"); add("wallpapers")
+                add("profiles"); add("wallpapers"); add("themes")
                 if (runtime.notifications.state.value.overlayAllowed) add("notifications")
             }))
     }
@@ -51,6 +52,12 @@ internal class LauncherCommands(private val runtime: FlickRuntime) {
                 JSONObject().put("package_name", it.packageName).put("name", it.name)
             }))
             BridgeCommandType.ListProfiles -> JSONObject().put("profiles", publicProfiles())
+            BridgeCommandType.ListThemes -> publicThemes()
+            BridgeCommandType.SetTheme -> {
+                val id = command.data.getString("id")
+                runtime.store.update { current -> current.copy(appearance = ThemeCatalog.select(current.appearance, id)) }
+                publicThemes()
+            }
             BridgeCommandType.SetProfile, BridgeCommandType.DeleteProfile, BridgeCommandType.SelectProfile -> editProfile(command)
             BridgeCommandType.NextWallpaper -> { runtime.wallpapers.next(); JSONObject() }
             BridgeCommandType.SetWallpaperOptions -> {
@@ -138,6 +145,14 @@ internal class LauncherCommands(private val runtime: FlickRuntime) {
             resolved.toString().takeIf { resolved.scheme in setOf("http", "https") && resolved.host != null && resolved.rawUserInfo == null }
         }.getOrNull() ?: return
         runtime.notifications.loadNoticeImage(uri)?.let { runtime.notifications.updateImage(notice.id, it) }
+    }
+
+    private fun publicThemes(): JSONObject {
+        val appearance = runtime.store.state.value.appearance
+        return JSONObject().put("selected", ThemeCatalog.resolve(appearance).id)
+            .put("themes", JSONArray(ThemeCatalog.themes(appearance).map { theme ->
+                JSONObject().put("id", theme.id).put("name", theme.name)
+            }))
     }
 
     private fun publicProfiles(details: Boolean = true) = JSONArray(runtime.store.state.value.profiles.map { publicProfile(it, details) })

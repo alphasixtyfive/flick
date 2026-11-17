@@ -21,6 +21,10 @@ import app.flick.updates.UpdatePanel
 internal fun HomePanels(panel: HomePanel?, state: HomeState, actions: HomeActions,
     onClose: () -> Unit, onPanel: (HomePanel) -> Unit) {
     when (panel) {
+        HomePanel.Theme -> app.flick.themes.ThemePanel(state.settings.appearance, actions.selectTheme,
+            actions.importTheme, actions.exportTheme, actions.removeTheme, onBack = { onPanel(HomePanel.Settings) })
+        HomePanel.Backup -> app.flick.backup.BackupPanel(state.backup, actions.prepareBackup, actions.saveBackup,
+            actions.chooseBackup, actions.restoreBackup, actions.discardBackup, onBack = { onPanel(HomePanel.Settings) })
         HomePanel.ManageProfiles -> ProfileManagementPanel(state.settings.profiles, state.settings.activeProfileId,
             onEdit = { onPanel(HomePanel.EditProfile(it)) },
             onAdd = { onPanel(HomePanel.EditProfile(Profile(java.util.UUID.randomUUID().toString(), ""))) },

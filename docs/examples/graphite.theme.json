@@ -1,0 +1,14 @@
+{
+  "format": "flick-theme",
+  "version": 1,
+  "name": "My Graphite",
+  "colors": {
+    "background": "#171717",
+    "surface": "#222222",
+    "surfaceRaised": "#2D2D2D",
+    "foreground": "#F0F0F0",
+    "secondary": "#BDBDBD",
+    "focusBackground": "#E2E2E2",
+    "focusForeground": "#191919"
+  }
+}

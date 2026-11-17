@@ -23,7 +23,8 @@ data class BridgeState(
 }
 
 enum class BridgeCommandType(val wireName: String) {
-    GetStatus("get_status"), ListApps("list_apps"), ListProfiles("list_profiles"),
+    GetStatus("get_status"), ListApps("list_apps"), ListProfiles("list_profiles"), ListThemes("list_themes"),
+    SetTheme("set_theme"),
     SetProfile("set_profile"), DeleteProfile("delete_profile"), SelectProfile("select_profile"),
     NextWallpaper("next_wallpaper"), SetWallpaperOptions("set_wallpaper_options"),
     SetWallpapers("set_wallpapers"), Notify("notify"),

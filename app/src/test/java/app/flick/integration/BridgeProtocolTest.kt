@@ -1,5 +1,7 @@
 package app.flick.integration
 
+import app.flick.themes.AppearanceSettings
+import app.flick.themes.ThemeCatalog
 import org.json.JSONObject
 import org.junit.Assert.*
 import org.junit.Test
@@ -58,6 +60,26 @@ class BridgeProtocolTest {
         rejected { BridgeProtocol.validateData(BridgeCommandType.SetWallpaperOptions, JSONObject().put("shuffle", "true")) }
         rejected { BridgeProtocol.validateData(BridgeCommandType.SetWallpaperOptions, JSONObject().put("dim_amount", 0.9)) }
         BridgeProtocol.validateData(BridgeCommandType.SetWallpaperOptions, JSONObject().put("interval_seconds", 300).put("shuffle", true))
+    }
+
+    @Test fun themeManagementAcceptsOnlyAThemeIdentifier() {
+        val event = BridgeProtocol.event(command("list_themes")) as BridgeEvent.Command
+        assertEquals(BridgeCommandType.ListThemes, event.value.type)
+        BridgeProtocol.validateData(BridgeCommandType.SetTheme, JSONObject().put("id", "custom_1234-5678"))
+        rejected { BridgeProtocol.event(command("list_themes", JSONObject().put("colors", JSONObject()))) }
+        for (id in listOf<Any>("", "../theme", "x".repeat(65), 42)) rejected {
+            BridgeProtocol.validateData(BridgeCommandType.SetTheme, JSONObject().put("id", id))
+        }
+        rejected { BridgeProtocol.validateData(BridgeCommandType.SetTheme, JSONObject().put("id", "midnight").put("colors", JSONObject())) }
+    }
+
+    @Test fun importedThemeIdentifiersFitTheManagementProtocol() {
+        val appearance = ThemeCatalog.addImported(AppearanceSettings(), ThemeCatalog.graphite.copy(name = "Ocean"))
+        val id = appearance.selectedThemeId
+        assertEquals(43, id.length)
+        val event = BridgeProtocol.event(command("set_theme", JSONObject().put("id", id))) as BridgeEvent.Command
+        assertEquals(BridgeCommandType.SetTheme, event.value.type)
+        assertEquals(id, event.value.data.getString("id"))
     }
 
     @Test fun parentPinUpdatesRequireExactlyFourDigits() {

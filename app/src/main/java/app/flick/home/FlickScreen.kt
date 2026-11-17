@@ -65,6 +65,8 @@ internal sealed interface HomePanel {
     data object HomeAssistantSetup : HomePanel
     data class HomeEntities(val fromControls: Boolean = false) : HomePanel
     data object Integration : HomePanel
+    data object Theme : HomePanel
+    data object Backup : HomePanel
     data object Updates : HomePanel
     data object ManageProfiles : HomePanel
     data object ProfileStartup : HomePanel
@@ -212,6 +214,9 @@ fun FlickScreen(state: HomeState, actions: HomeActions) {
         closePanel()
         moving = null
     }
+    LaunchedEffect(state.backup.preview) {
+        if (state.backup.preview == app.flick.backup.BackupPreview.Restore) openPanel(HomePanel.Backup)
+    }
     LaunchedEffect(state.homeRequestVersion) {
         if (state.homeRequestVersion > 0) {
             if (panel is HomePanel.Pin) actions.cancelProfileSelection()
@@ -349,7 +354,9 @@ fun FlickScreen(state: HomeState, actions: HomeActions) {
                 onWeather = { if (panel == displayed) openPanel(HomePanel.Weather) },
                 onWallpaper = { if (panel == displayed) openPanel(HomePanel.Wallpaper) },
                 onProfiles = { if (panel == displayed) openPanel(HomePanel.ManageProfiles) },
-                onUpdates = { if (panel == displayed) { actions.checkUpdates(); openPanel(HomePanel.Updates) } },
+                onUpdates = { if (panel == displayed) openPanel(HomePanel.Updates) },
+                onTheme = { if (panel == displayed) openPanel(HomePanel.Theme) },
+                onBackup = { if (panel == displayed) openPanel(HomePanel.Backup) },
                 onHomeAssistant = { if (panel == displayed) openPanel(HomePanel.HomeAssistantSetup) })
             else HomePanels(displayed, state, actions, onClose = { if (panel == displayed) closePanel() },
                 onPanel = { if (panel == displayed) openPanel(it) })
@@ -391,14 +398,14 @@ fun FlickScreen(state: HomeState, actions: HomeActions) {
         state.message?.let { message ->
             Text(message, style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.align(Alignment.BottomCenter).padding(22.dp)
-                    .background(Color(0xee182330)).padding(horizontal = 18.dp, vertical = 12.dp))
+                    .background(FlickColors.SurfaceRaised.copy(alpha = .94f)).padding(horizontal = 18.dp, vertical = 12.dp))
         }
     }
 }
 
 @Composable
 private fun RecoveryScreen(openAndroidSettings: () -> Unit) {
-    Box(Modifier.fillMaxSize().background(Color(0xff111720)), contentAlignment = Alignment.Center) {
+    Box(Modifier.fillMaxSize().background(FlickColors.Background), contentAlignment = Alignment.Center) {
         Column(Modifier.width(440.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
             Text("Setup could not be read", style = MaterialTheme.typography.headlineSmall)
             Text("Flick kept the damaged setup private and locked its controls. Open Android app settings to clear its storage, then set it up again. Android will ask you to confirm.", style = MaterialTheme.typography.bodyLarge)

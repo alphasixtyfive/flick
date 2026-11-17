@@ -70,7 +70,7 @@ internal fun ProfilePicker(
 @Composable
 internal fun ProfilePickerBackdrop() {
     Box(Modifier.fillMaxSize()
-        .background(Brush.linearGradient(listOf(Color(0xFF1B2735), FlickColors.Background, Color(0xFF0C1119))))
+        .background(Brush.linearGradient(listOf(FlickColors.SurfaceRaised, FlickColors.Background, FlickColors.Surface)))
         .pointerInput(Unit) { detectTapGestures(onTap = {}) })
 }
 
@@ -148,7 +148,7 @@ private fun ProfileAvatarChoice(profile: Profile, active: Boolean, modifier: Mod
                     ProfileAvatar(profile, 72.dp)
                     // Inset within the portrait circle, clear of the surrounding focus ring.
                     if (active) Box(Modifier.align(Alignment.BottomEnd).padding(end = 10.dp, bottom = 10.dp)
-                        .size(14.dp).background(FlickColors.Foreground, CircleShape)
+                        .size(14.dp).background(FlickColors.FocusBackground, CircleShape)
                         .border(1.dp, FlickColors.Background, CircleShape), contentAlignment = Alignment.Center) {
                         Icon(Icons.Default.Check, contentDescription = null, tint = FlickColors.FocusForeground,
                             modifier = Modifier.size(10.dp))

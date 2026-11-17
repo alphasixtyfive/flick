@@ -1,6 +1,10 @@
 package app.flick
 
 import android.app.Application
+import android.net.Uri
+import app.flick.themes.ThemeCatalog
+import app.flick.themes.ThemeDefinition
+import app.flick.themes.ThemeDocuments
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import app.flick.apps.AndroidCatalogue
@@ -37,6 +41,8 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     private val weather = WeatherRepository()
     private val homeAssistant = runtime.homeAssistant
     private val wallpapers = runtime.wallpapers
+    private val backups = runtime.backups
+    private val themeDocuments = ThemeDocuments(application)
     private val mutable = MutableStateFlow(HomeState(settings = store.state.value, profileSession = runtime.profileSession.state.value))
     val state = mutable.asStateFlow()
     private val profileLock = runtime.profileLock
@@ -55,10 +61,12 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     private var active = true
 
     init {
+        viewModelScope.launch { backups.state.collect { value -> mutable.update { it.copy(backup = value) } } }
         viewModelScope.launch { runtime.profileSession.state.collect { session ->
             mutable.update { it.copy(profileSession = session, profileError = null, profileErrorTarget = null) }
             updateCatalogue()
             refreshContinue()
+            if (!runtime.canManage()) backups.discard()
         } }
         viewModelScope.launch { store.state.collect { settings ->
             runtime.reconcileProfileSession()
@@ -432,26 +440,29 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         if (job == null) onComplete(Result.failure(IllegalStateException("Choose an adult profile first")))
     }
 
-    suspend fun importSettings(settings: LauncherSettings, wallpaper: WallpaperSettings?,
-        haUrl: String? = null, haToken: String? = null, haControls: List<HaControlSpec> = emptyList()) {
-        val job = requireNotNull(currentCoroutineContext()[Job])
-        privilegedJobs.add(job)
-        try {
-            profileLock.withLock {
-                check(adult() && !switchingProfile) { "Choose an adult profile before importing setup" }
-                SettingsCodec.read(SettingsCodec.write(settings))
-                val validated = wallpaper?.let { wallpapers.validateForImport(it) }
-                val selected = HaPolicy.controls(haControls)
-                if (haUrl != null && haToken != null) homeAssistant.validateConfiguration(haUrl, haToken)
-                if (haUrl != null && haToken != null) {
-                    homeAssistant.configure(haUrl, haToken)
-                    homeAssistant.saveControls(selected)
-                }
-                validated?.let { wallpapers.save(it) }
-                store.save(settings)
-            }
-        } finally { privilegedJobs.remove(job) }
-    }
+    fun selectTheme(id: String) { editSettings { it.copy(appearance = ThemeCatalog.select(it.appearance, id)) } }
+    fun removeTheme(id: String) { editSettings { it.copy(appearance = ThemeCatalog.remove(it.appearance, id)) } }
+    fun importTheme(uri: Uri) { privilegedTask {
+        val theme = themeDocuments.read(uri)
+        profileLock.withLock {
+            store.update { check(adult()) { "Choose an adult profile first" }; it.copy(appearance = ThemeCatalog.addImported(it.appearance, theme)) }
+        }
+        message("Theme imported")
+    } }
+    fun exportTheme(theme: ThemeDefinition, uri: Uri) { privilegedTask {
+        themeDocuments.write(theme, uri)
+        message("Theme saved")
+    } }
+    fun prepareBackup() { task { backups.prepareExport() } }
+    fun saveBackup(uri: Uri?) { task { backups.write(uri) } }
+    fun readBackup(uri: Uri) { task { backups.read(uri) } }
+    fun readLegacyBackup(raw: String) { task { backups.readLegacy(raw) } }
+    fun discardBackup() { task { backups.discard() } }
+    fun restoreBackup(pin: String?, complete: (Result<Unit>) -> Unit) { task {
+        try { backups.restore(pin); complete(Result.success(Unit)) }
+        catch (cancelled: CancellationException) { complete(Result.failure(IllegalStateException("Restore was interrupted. Check the current profiles."))); throw cancelled }
+        catch (failure: Exception) { complete(Result.failure(failure)) }
+    } }
 
     private fun editSettings(transform: (LauncherSettings) -> LauncherSettings) = privilegedTask {
         profileLock.withLock {
