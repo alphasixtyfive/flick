@@ -13,19 +13,24 @@ object SettingsCodec {
     private val packageName = Regex("[A-Za-z_][A-Za-z0-9_]*(\\.[A-Za-z_][A-Za-z0-9_]*)+")
     private val pinSaltPattern = Regex("[a-f0-9]{32}")
     private val pinHashPattern = Regex("[a-f0-9]{64}")
-    private val presentationFields = setOf("largeText", "compactTiles", "showHomeAssistant", "showSettings", "showWallpaper",
-        "showWeather", "clock24", "showContinue", "navigationSound", "weatherLocation", "favorites", "removedContinue", "profileStartup")
-
     /** Apply only the user's changed preferences to the latest state, preserving profile authority. */
     fun mergePresentation(current: LauncherSettings, before: LauncherSettings, requested: LauncherSettings): LauncherSettings {
-        val previous = write(before)
-        val next = write(requested)
-        val merged = write(current)
-        for (key in presentationFields) {
-            if (previous.opt(key)?.toString() == next.opt(key)?.toString()) continue
-            if (next.has(key)) merged.put(key, next.get(key)) else merged.remove(key)
-        }
-        return read(merged)
+        fun <T> field(previous: T, next: T, saved: T) = if (previous == next) saved else next
+        return current.copy(
+            largeText = field(before.largeText, requested.largeText, current.largeText),
+            compactTiles = field(before.compactTiles, requested.compactTiles, current.compactTiles),
+            showHomeAssistant = field(before.showHomeAssistant, requested.showHomeAssistant, current.showHomeAssistant),
+            showSettings = field(before.showSettings, requested.showSettings, current.showSettings),
+            showWallpaper = field(before.showWallpaper, requested.showWallpaper, current.showWallpaper),
+            showWeather = field(before.showWeather, requested.showWeather, current.showWeather),
+            clock24 = field(before.clock24, requested.clock24, current.clock24),
+            showContinue = field(before.showContinue, requested.showContinue, current.showContinue),
+            navigationSound = field(before.navigationSound, requested.navigationSound, current.navigationSound),
+            weatherLocation = field(before.weatherLocation, requested.weatherLocation, current.weatherLocation),
+            favorites = field(before.favorites, requested.favorites, current.favorites),
+            removedContinue = field(before.removedContinue, requested.removedContinue, current.removedContinue),
+            profileStartup = field(before.profileStartup, requested.profileStartup, current.profileStartup),
+        )
     }
 
     private fun JSONArray?.strings(limit: Int) = if (this == null) emptyList() else

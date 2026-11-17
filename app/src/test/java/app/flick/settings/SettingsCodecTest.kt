@@ -2,6 +2,7 @@ package app.flick.settings
 
 import app.flick.profiles.Profile
 import app.flick.profiles.ProfileSecurity
+import app.flick.profiles.ProfileStartup
 import app.flick.weather.WeatherLocation
 import org.json.JSONObject
 import org.junit.Assert.*
@@ -52,6 +53,39 @@ class SettingsCodecTest {
         assertFalse(merged.showHomeAssistant)
         assertFalse(merged.showSettings)
         assertEquals(latest.profiles, merged.profiles)
+    }
+
+    @Test fun explicitPresentationClearsWinWhileUntouchedConcurrentValuesSurvive() {
+        val before = LauncherSettings(weatherLocation = WeatherLocation(51.5, -.1, "London"),
+            favorites = listOf("org.example.video"))
+        val current = before.copy(clock24 = false, navigationSound = NavigationSound.System,
+            removedContinue = setOf("org.example.video:finished"), favorites = listOf("org.example.game"))
+        val requested = before.copy(weatherLocation = null, favorites = null, navigationSound = NavigationSound.Off)
+        val merged = SettingsCodec.mergePresentation(current, before, requested)
+        assertEquals(current.copy(weatherLocation = null, favorites = null, navigationSound = NavigationSound.Off), merged)
+    }
+
+    @Test fun appearanceRequestsCannotInjectProfilesRolesPinsOrAnActiveAdult() {
+        val adult = Profile("parent", "Parent", pinSalt = "a".repeat(32), pinHash = "b".repeat(64))
+        val child = Profile("child", "Child", child = true, allowedApps = listOf("org.example.video"))
+        val before = LauncherSettings(profiles = listOf(adult, child), activeProfileId = adult.id)
+        val current = before.copy(activeProfileId = child.id, profiles = listOf(
+            adult.copy(pinSalt = "c".repeat(32), pinHash = "d".repeat(64)),
+            child.copy(allowedApps = listOf("org.example.game")),
+        ))
+        val requested = before.copy(largeText = true, activeProfileId = adult.id,
+            profiles = listOf(Profile(adult.id, "Unprotected"), child.copy(child = false)))
+        assertEquals(current.copy(largeText = true), SettingsCodec.mergePresentation(current, before, requested))
+    }
+
+    @Test fun presentationMergeIncludesEveryExistingAppearanceOption() {
+        val before = LauncherSettings()
+        val requested = before.copy(largeText = true, compactTiles = false, showHomeAssistant = false,
+            showSettings = false, showWallpaper = false, showWeather = false, clock24 = false, showContinue = false,
+            navigationSound = NavigationSound.Off, weatherLocation = WeatherLocation(50.0, 1.0, "Example"),
+            favorites = emptyList(), removedContinue = setOf("org.example.video:finished"),
+            profileStartup = ProfileStartup.ResumeLast)
+        assertEquals(requested, SettingsCodec.mergePresentation(before, before, requested))
     }
 
     @Test fun existingRecordsCannotDefaultMissingAuthorityToAnAdult() {
