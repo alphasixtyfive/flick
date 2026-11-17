@@ -1,5 +1,7 @@
 package app.flick.homeassistant
 
+import org.json.JSONObject
+
 /** Optional physical-screen observation, independent of the controls a user can operate. */
 enum class HaDisplayPower {
     Disabled, Unknown, On, Off,
@@ -8,6 +10,10 @@ enum class HaDisplayPower {
 internal object HaDisplayPowerPolicy {
     private val identifier = Regex("media_player\\.[a-z0-9_]{1,128}")
     fun entityId(value: String): String? = value.takeIf { identifier.matches(it) }
+    fun isTelevision(value: JSONObject): Boolean {
+        val id = value.opt("entity_id") as? String ?: return false
+        return entityId(id) != null && value.optJSONObject("attributes")?.opt("device_class") == "tv"
+    }
     fun selection(value: HaControlSpec?): HaControlSpec? = value?.let {
         if (entityId(it.entityId) == null) throw HaException("Choose a media player for the physical TV")
         it.copy(name = HaPolicy.text(it.name).ifEmpty { it.entityId.substringAfter('.').replace('_', ' ') })

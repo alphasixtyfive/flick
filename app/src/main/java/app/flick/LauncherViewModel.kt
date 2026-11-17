@@ -72,7 +72,6 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch { runtime.updates.state.collect { update -> mutable.update { it.copy(update = update) } } }
         viewModelScope.launch { homeAssistant.configuration.collect { value -> mutable.update { it.copy(haConfiguration = value) } } }
         viewModelScope.launch { homeAssistant.connectionState.collect { value -> mutable.update { it.copy(haConnectionState = value) } } }
-        viewModelScope.launch { homeAssistant.displayPower.collect { value -> mutable.update { it.copy(displayPower = value) } } }
         viewModelScope.launch { homeAssistant.controls.collect { value -> mutable.update { it.copy(homeControls = value) } } }
         viewModelScope.launch { runtime.bridge.state.collect { value -> mutable.update { it.copy(bridge = value) } } }
         viewModelScope.launch { runtime.notifications.state.collect { value -> mutable.update { it.copy(notifications = value) } } }

@@ -11,6 +11,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.input.KeyboardType
@@ -51,6 +53,7 @@ internal fun WallpaperSettingsPanel(settings: WallpaperSettings, onSave: (Wallpa
     var photoSaveCompletion by remember { mutableStateOf<PhotoSaveCompletion?>(null) }
     var choice by remember { mutableStateOf<SlideshowChoice?>(null) }
     var confirmClear by remember { mutableStateOf(false) }
+    val folderFocus = remember { FocusRequester() }
     fun save(value: WallpaperSettings) { onSave(value) {} }
     LaunchedEffect(photoSaveCompletion) {
         val finished = photoSaveCompletion ?: return@LaunchedEffect
@@ -69,7 +72,12 @@ internal fun WallpaperSettingsPanel(settings: WallpaperSettings, onSave: (Wallpa
             TvSettingRow("Choose photos", detail = "Select several pictures at once", icon = Icons.Default.PhotoLibrary,
                 onClick = onChoosePhotos)
             TvSettingRow("Photo folder", detail = if (settings.folderUri == null) "Use a folder as a slideshow" else "Folder selected",
-                icon = Icons.Default.FolderOpen, onClick = onChooseFolder)
+                icon = Icons.Default.FolderOpen, modifier = Modifier.focusRequester(folderFocus), onClick = onChooseFolder)
+            if (settings.folderUri != null) TvSettingRow("Remove photo folder", icon = Icons.Default.Remove,
+                onClick = {
+                    folderFocus.requestFocus()
+                    save(settings.copy(folderUri = null))
+                })
             if (settings.photos.isNotEmpty()) TvSettingRow("Selected photos", detail = "${settings.photos.size} selected", icon = Icons.Default.Collections,
                 onClick = { page = WallpaperPage.Photos })
             TvSettingRow("Slideshow", detail = photoIntervalLabel(settings.intervalSeconds), icon = Icons.Default.Slideshow,

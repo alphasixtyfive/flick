@@ -1,9 +1,37 @@
 package app.flick.homeassistant
 
+import org.json.JSONObject
 import org.junit.Assert.*
 import org.junit.Test
 
 class HaDisplayPowerTest {
+    private fun player(id: String, deviceClass: Any? = "tv") = JSONObject().put("entity_id", id)
+        .put("attributes", JSONObject().put("friendly_name", "Living room TV").apply {
+            if (deviceClass != null) put("device_class", deviceClass)
+        })
+
+    @Test fun standbyDiscoveryUsesTvMetadataRatherThanNames() {
+        assertTrue(HaDisplayPowerPolicy.isTelevision(player("media_player.screen")))
+        assertFalse(HaDisplayPowerPolicy.isTelevision(player("media_player.lounge_tv", "speaker")))
+        assertFalse(HaDisplayPowerPolicy.isTelevision(player("media_player.television", "receiver")))
+        assertTrue(HaDisplayPowerPolicy.isTelevision(player("media_player.browser").put("attributes",
+            JSONObject().put("friendly_name", "Desktop").put("device_class", "tv"))))
+    }
+
+    @Test fun standbyDiscoveryRejectsMissingOrMalformedClassification() {
+        assertFalse(HaDisplayPowerPolicy.isTelevision(player("media_player.screen", null)))
+        assertFalse(HaDisplayPowerPolicy.isTelevision(player("media_player.screen", 1)))
+        assertFalse(HaDisplayPowerPolicy.isTelevision(player("media_player.screen", "TV")))
+        assertFalse(HaDisplayPowerPolicy.isTelevision(player("light.screen")))
+        assertFalse(HaDisplayPowerPolicy.isTelevision(player("media_player.screen").put("attributes", "tv")))
+    }
+
+    @Test fun savedSourceRemainsValidWithoutDiscoveryMetadata() {
+        val saved = HaControlSpec("media_player.old_screen", "Saved TV")
+        assertFalse(HaDisplayPowerPolicy.isTelevision(player(saved.entityId, null)))
+        assertEquals(saved, HaDisplayPowerPolicy.selection(saved))
+    }
+
     @Test fun onlyMediaPlayerIdentifiersCanBeObservedAndTheyAreNeverControls() {
         assertNotNull(HaDisplayPowerPolicy.selection(HaControlSpec("media_player.screen", "Screen")))
         assertNull(HaPolicy.domain("media_player.screen"))

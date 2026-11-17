@@ -142,11 +142,12 @@ class HomeAssistantRepository(context: Context, scope: CoroutineScope) {
 
     suspend fun discover(): List<HaEntity> = discoverEntities(HaPolicy::domain)
 
-    suspend fun discoverDisplayPlayers(): List<HaEntity> = discoverEntities { id ->
+    suspend fun discoverDisplayPlayers(): List<HaEntity> = discoverEntities({ id ->
         HaDisplayPowerPolicy.entityId(id)?.let { "media_player" }
-    }
+    }, HaDisplayPowerPolicy::isTelevision)
 
-    private suspend fun discoverEntities(domainFor: (String) -> String?): List<HaEntity> = withContext(Dispatchers.IO) {
+    private suspend fun discoverEntities(domainFor: (String) -> String?,
+        include: (JSONObject) -> Boolean = { true }): List<HaEntity> = withContext(Dispatchers.IO) {
         ready()
         val (connection, epoch) = snapshot()
         val values = try {
@@ -159,6 +160,7 @@ class HomeAssistantRepository(context: Context, scope: CoroutineScope) {
         if (epoch != generation.get()) throw HaException("Home Assistant changed; refresh the entity list")
         (0 until values.length()).mapNotNull { index ->
             val item = values.optJSONObject(index) ?: return@mapNotNull null
+            if (!include(item)) return@mapNotNull null
             val id = item.optString("entity_id")
             val domain = domainFor(id) ?: return@mapNotNull null
             val name = HaPolicy.text(item.optJSONObject("attributes")?.optString("friendly_name").orEmpty())

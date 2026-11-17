@@ -3,12 +3,12 @@ package app.flick.homeassistant
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Tv
 import androidx.compose.runtime.*
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import app.flick.ui.components.TvLazyPanel
 import app.flick.ui.components.TvSettingRow
+import app.flick.ui.components.TvChoiceRow
 import app.flick.ui.theme.FlickColors
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
@@ -42,14 +42,13 @@ internal fun HomeDisplayPowerPicker(selected: HaControlSpec?, discover: suspend 
             finally { saving = false }
         }
     }
-    TvLazyPanel("Physical TV", onBack = onBack, focusKey = loading) {
+    TvLazyPanel("TV standby detection", onBack = onBack, focusKey = loading) {
         item(key = "explanation") {
-            Text("Choose the screen, not this Android box or an audio player. With Ask on startup, turning the TV off ends the current profile session.",
+            Text("Android normally detects screen-off itself. Choose a Home Assistant TV only if the box stays awake when the screen turns off. With Ask on startup, TV standby ends the current profile session.",
                 style = MaterialTheme.typography.bodyMedium)
         }
         item(key = "none") {
-            TvSettingRow("Not selected", detail = "Use Android screen-off detection only", checked = selected == null,
-                icon = Icons.Default.Tv, onClick = { choose(null) })
+            TvChoiceRow("Android screen-off", selected = selected == null, onClick = { choose(null) })
         }
         if (loading) item(key = "loading") { Text("Loading TVs…", style = MaterialTheme.typography.bodySmall) }
         error?.let { message -> item(key = "error") { Text(message, style = MaterialTheme.typography.bodySmall) } }
@@ -57,11 +56,14 @@ internal fun HomeDisplayPowerPicker(selected: HaControlSpec?, discover: suspend 
             TvSettingRow("Retry", icon = Icons.Default.Refresh, onClick = { if (!saving) attempt++ })
         }
         items(entities.orEmpty(), key = { it.entityId }) { entity ->
-            TvSettingRow(entity.name, detail = entity.entityId, checked = entity.entityId == selected?.entityId,
-                icon = Icons.Default.Tv, onClick = { choose(HaControlSpec(entity.entityId, entity.name)) })
+            TvChoiceRow(entity.name, selected = entity.entityId == selected?.entityId,
+                onClick = { choose(HaControlSpec(entity.entityId, entity.name)) })
+        }
+        if (!loading && selected != null && entities.orEmpty().none { it.entityId == selected.entityId }) item(key = "saved") {
+            TvChoiceRow("${selected.name} (saved)", selected = true, onClick = { choose(selected) })
         }
         if (!loading && entities?.isEmpty() == true) item(key = "empty") {
-            Text("No media players were found. Check which devices your Home Assistant account can read.", style = MaterialTheme.typography.bodySmall)
+            Text("No TVs were found. The source must be a media player classified as a TV in Home Assistant.", style = MaterialTheme.typography.bodySmall)
         }
         item(key = "offline") {
             Text("TV off ends the session. An unavailable state or lost connection also ends it once. Local profiles and PINs still work offline; exact physical-TV wake detection needs a connected source.",

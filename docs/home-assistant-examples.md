@@ -26,13 +26,13 @@ Create a Movie time scene in Home Assistant's scene editor using the lights you 
 then select that scene in Flick. These ordinary controls do not need the custom integration.
 Flick excludes locks, alarms and gate controls.
 
-## Pair the optional TV integration
+## Pair the optional TV connection
 
 Install [Flick TV for Home Assistant](https://github.com/alphasixtyfive/flick-home-assistant)
 using its setup instructions. Its current documented requirements are Home Assistant 2026.11
 or later and Flick 0.2.2 or later.
 
-On the TV, open **Home Assistant → TV integration → Pair TV**. In an administrator's
+On the TV, open **Home Assistant → TV connection → Pair TV**. In an administrator's
 Home Assistant session, add **Flick TV** under **Settings → Devices & services** and enter
 the six-digit code. Keep the TV connected with its non-admin account.
 

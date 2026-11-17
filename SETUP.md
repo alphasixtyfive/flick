@@ -79,8 +79,8 @@ Back from the PIN returns to the chooser. Set a PIN for each adult before select
 
 Ask resets when Flick's process starts or Android reports that the box's screen turned off. Returning
 from Plex, another app or a photo picker keeps the current session. Flick does not interrupt another app.
-If the box stays awake while the television switches off, choose the physical television under
-Home Assistant → Physical TV. Losing that signal also locks the current session. Local profile
+If the box stays awake while the television switches off, choose its Home Assistant entity under
+Profiles → On startup & wake → TV standby detection. Android screen-off is the default choice. Losing that signal also locks the current session. Local profile
 selection works offline; while the signal remains unavailable, TV-only power changes cannot be observed.
 
 ## Photos
@@ -125,12 +125,12 @@ Flick supports lights, switches, toggle helpers (`input_boolean`), scenes/script
 sensors. Locks, alarms and gate controls are excluded. Rows show reported state, pending changes and
 errors; scenes run directly. If the server is offline, use Retry in Home Assistant settings.
 
-### TV integration
+### TV connection
 
 Install the optional [Flick TV component](https://github.com/alphasixtyfive/flick-home-assistant)
 in Home Assistant for notifications and launcher management. Ordinary light controls work without it.
 
-1. On the TV, open Settings → Home Assistant → TV integration → Pair TV.
+1. On the TV, open Settings → Home Assistant → TV connection → Pair TV.
 2. In an administrator's Home Assistant session, open Settings → Devices & services → Add integration → Flick TV.
 3. Enter the TV's six-digit code and confirm its name. The code expires after five minutes.
 

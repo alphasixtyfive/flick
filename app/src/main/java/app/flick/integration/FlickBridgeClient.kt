@@ -144,11 +144,14 @@ class FlickBridgeClient(
     private suspend fun reconnectLocked() {
         stopLocked()
         val saved = store.state()
-        if (!saved.enabled) { mutable.value = saved; return }
         val credentials = credentialsStore.credentials()
-        if (credentials == null) { mutable.value = saved.copy(connection = BridgeConnection.HomeAssistantRequired); return }
+        if (credentials == null) {
+            mutable.value = saved.copy(connection = if (saved.enabled) BridgeConnection.HomeAssistantRequired else BridgeConnection.Disabled)
+            return
+        }
         val origin = HaPolicy.canonicalUrl(credentials.url)
         val identity = store.identity(origin)
+        if (!saved.enabled) { mutable.value = saved.copy(paired = identity?.paired == true); return }
         val code = state.value.pairingCode?.takeIf { pairingOrigin == origin && SystemClock.elapsedRealtime() < pairingDeadline }
         mutable.value = saved.copy(paired = identity?.paired == true, pairingCode = code,
             pairingExpiresAtMillis = state.value.pairingExpiresAtMillis.takeIf { code != null }, connection = BridgeConnection.NotPaired)
@@ -187,6 +190,7 @@ class FlickBridgeClient(
         val alive = AtomicBoolean(true)
         val connection = Connection(epoch, identity, ids, alive) { socket.get() }
         var heartbeat: Job? = null
+        var statusDeadline: Job? = null
         val consumer = launch {
             for (event in queue) {
                 if (!connection.isCurrent()) continue
@@ -220,6 +224,11 @@ class FlickBridgeClient(
                 if (!connection.isCurrent()) return
                 try {
                     val frame = BridgeProtocol.frame(text)
+                    when (connection.statusAcks.acknowledge(frame)) {
+                        BridgeStatusAcks.Result.Accepted -> { connection.statusChanges.trySend(Unit); return }
+                        BridgeStatusAcks.Result.Rejected -> { webSocket.cancel(); ended.complete(Unit); return }
+                        BridgeStatusAcks.Result.Ignored -> Unit
+                    }
                     when (frame.optString("type")) {
                         "auth_required" -> webSocket.send(JSONObject().put("type", "auth").put("access_token", credentials.token).toString())
                         "auth_invalid" -> { subscribed.completeExceptionally(SignInRejected()); ended.complete(Unit) }
@@ -278,11 +287,26 @@ class FlickBridgeClient(
             withTimeout(10_000) { subscribed.await() }
             val subscribedAt = System.nanoTime()
             heartbeat = launch { while (isActive) { delay(30_000); if (connection.isCurrent()) runCatching { publishStatus() } } }
+            statusDeadline = launch {
+                while (isActive && connection.isCurrent()) {
+                    val remaining = connection.statusAcks.remainingMillis()
+                    if (remaining == null) connection.statusChanges.receive()
+                    else withTimeoutOrNull(remaining.coerceAtLeast(1)) { connection.statusChanges.receive() }
+                    if (connection.statusAcks.expired()) {
+                        socket.get()?.cancel()
+                        ended.complete(Unit)
+                        break
+                    }
+                }
+            }
             ended.await()
             System.nanoTime() - subscribedAt >= 30_000_000_000L
         } finally {
-            synchronized(connectionLock) { alive.set(false); if (active === connection) active = null }
-            queue.close(); consumer.cancel(); heartbeat?.cancel(); socket.getAndSet(null)?.cancel()
+            synchronized(connectionLock) {
+                alive.set(false)
+                if (active === connection) active = null
+            }
+            queue.close(); consumer.cancel(); heartbeat?.cancel(); statusDeadline?.cancel(); socket.getAndSet(null)?.cancel()
         }
     }
 
@@ -316,15 +340,27 @@ class FlickBridgeClient(
 
     private inner class Connection(val epoch: Long, val identity: BridgeIdentity, private val ids: AtomicInteger,
         private val alive: AtomicBoolean, private val socket: () -> WebSocket?) {
+        val statusAcks = BridgeStatusAcks()
+        val statusChanges = Channel<Unit>(Channel.CONFLATED)
         fun isCurrent(): Boolean = synchronized(connectionLock) { !closed && generation == epoch && alive.get() }
         fun update(value: BridgeConnection) = synchronized(connectionLock) {
             if (isCurrent()) mutable.update { it.copy(connection = value) }
         }
-        fun send(type: String, data: JSONObject) {
-            if (!isCurrent()) return
-            val frame = JSONObject(data.toString()).put("id", ids.incrementAndGet()).put("type", type)
+        fun send(type: String, data: JSONObject): Int? = synchronized(connectionLock) {
+            if (!isCurrent()) return@synchronized null
+            val id = ids.incrementAndGet()
+            if (type == "flick_tv/status") {
+                if (!statusAcks.sent(id)) {
+                    socket()?.cancel()
+                    return@synchronized null
+                }
+                statusChanges.trySend(Unit)
+            }
+            val frame = JSONObject(data.toString()).put("id", id).put("type", type)
                 .put("device_id", state.value.deviceId).put("device_secret", identity.secret)
-            if (socket()?.send(BridgeProtocol.encoded(frame)) != true) socket()?.cancel()
+            if (socket()?.send(BridgeProtocol.encoded(frame)) == true) return@synchronized id
+            socket()?.cancel()
+            null
         }
     }
     private fun updateConnection(epoch: Long, connection: BridgeConnection) = synchronized(connectionLock) {

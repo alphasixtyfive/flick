@@ -7,7 +7,6 @@ import app.flick.homeassistant.HaControl
 import app.flick.homeassistant.HaConnectionState
 import app.flick.homeassistant.HaControlSpec
 import app.flick.homeassistant.HaEntity
-import app.flick.homeassistant.HaDisplayPower
 import app.flick.profiles.Profile
 import app.flick.profiles.ProfileSessionState
 import app.flick.settings.LauncherSettings
@@ -37,7 +36,6 @@ data class HomeState(
     val bridge: BridgeState = BridgeState(),
     val notifications: NotificationState = NotificationState(),
     val haConnectionState: HaConnectionState = HaConnectionState.Unknown,
-    val displayPower: HaDisplayPower = HaDisplayPower.Disabled,
     val haDiscoveryLoaded: Boolean = false,
     val recoveryRequired: Boolean = false,
     val loading: Boolean = true,

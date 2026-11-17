@@ -49,6 +49,8 @@ The TV replies through `flick_tv/result`, including `device_id`, `device_secret`
 
 Proactive `flick_tv/status` messages use flat fields `version`, `profile`, `profiles`, optional
 `current_app`, and `capabilities`. Profile summaries contain only `id`, `name` and `child`.
+Flick 0.2.22+ reconnects if a status update is rejected or remains unacknowledged for ten seconds;
+WebSocket ping alone cannot detect a missing logical TV session after an integration reload.
 The explicit `list_profiles` response may also contain `allowed_apps` and online avatar URLs.
 Neither response includes PINs, verifiers, salts or document grants.
 

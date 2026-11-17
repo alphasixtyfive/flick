@@ -14,7 +14,7 @@ import app.flick.ui.components.TvSettingRow
 import app.flick.ui.theme.FlickColors
 
 private enum class IntegrationPage(val title: String) {
-    Overview("TV integration"), Notifications("Notifications"),
+    Overview("TV connection"), Notifications("Notifications"),
     Management("Launcher management"),
 }
 
@@ -30,14 +30,14 @@ internal fun IntegrationPanel(state: HomeState, actions: HomeActions, onBack: ()
     TvPanel(page.title, onBack = back, focusKey = page to bridge.paired) {
         when (page) {
             IntegrationPage.Overview -> {
-                IntegrationDetail(bridge.connection.label)
+                IntegrationDetail(if (bridge.paired && !bridge.enabled) "Paused. Pairing is saved." else bridge.connection.label)
                 if (!bridge.paired) {
                     IntegrationDetail("Add Flick in Home Assistant to send notifications and manage this TV. Light controls work without it.")
                     if (state.haConfiguration.configured) {
                         val code = bridge.pairingCode
                         if (code != null) {
                             Text(code, style = MaterialTheme.typography.headlineMedium)
-                            IntegrationDetail("In Home Assistant, open Settings → Devices & services → Add integration → Flick. Enter this code within five minutes.")
+                            IntegrationDetail("In Home Assistant, open Settings → Devices & services → Add integration → Flick TV. Enter this code within five minutes.")
                         }
                         TvSettingRow(if (code == null) "Pair TV" else "New pairing code", icon = Icons.Default.Link,
                             onClick = actions.pairHomeAssistant)
@@ -47,7 +47,7 @@ internal fun IntegrationPanel(state: HomeState, actions: HomeActions, onBack: ()
                     TvSettingRow("Setup instructions", icon = Icons.AutoMirrored.Filled.HelpOutline,
                         onClick = { actions.openProjectLink("https://github.com/alphasixtyfive/flick#home-assistant") })
                 } else {
-                    TvSettingRow("Enable TV integration", checked = bridge.enabled, icon = Icons.Default.Link,
+                    TvSettingRow("Enable TV connection", checked = bridge.enabled, icon = Icons.Default.Link,
                         detail = if (bridge.enabled) "Paired with Home Assistant" else "Paused. Pairing is saved.",
                         onClick = { actions.setIntegrationEnabled(!bridge.enabled) })
                     TvSettingRow("Notifications", detail = when {
@@ -68,14 +68,14 @@ internal fun IntegrationPanel(state: HomeState, actions: HomeActions, onBack: ()
                     onClick = { actions.setNotificationsEnabled(!bridge.notificationsEnabled) })
                 TvSettingRow("Display over other apps", detail = if (state.notifications.overlayAllowed) "Allowed by Android" else "Allow in Android settings",
                     icon = Icons.Default.PictureInPicture, onClick = actions.requestOverlayPermission)
-                if (!bridge.enabled) IntegrationDetail("TV integration is paused. Enable it to receive notifications.")
+                if (!bridge.enabled) IntegrationDetail("TV connection is paused. Enable it to receive notifications.")
                 state.notifications.message?.let { IntegrationDetail(it) }
             }
             IntegrationPage.Management -> {
                 IntegrationDetail("Let Home Assistant administrators manage profiles and wallpapers while an adult profile is unlocked. Light controls and notifications work separately.")
                 TvSettingRow("Allow launcher management", checked = bridge.allowManagement, icon = Icons.Default.ManageAccounts,
                     onClick = { actions.setLauncherManagement(!bridge.allowManagement) })
-                if (!bridge.enabled) IntegrationDetail("TV integration is paused. Your choice is saved until you enable it.")
+                if (!bridge.enabled) IntegrationDetail("TV connection is paused. Your choice is saved until you enable it.")
             }
         }
     }

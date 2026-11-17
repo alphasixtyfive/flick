@@ -20,7 +20,7 @@ import app.flick.ui.components.NativeTextField
 import app.flick.ui.components.TvDialog
 import app.flick.ui.components.TvPanel
 import app.flick.ui.components.TvSettingRow
-import app.flick.ui.components.TvChoiceDialog
+import app.flick.ui.components.TvChoiceRow
 
 private enum class ProfileEditOperation { Save, Delete }
 // Retries must remain distinct even when they report the same error.
@@ -29,8 +29,7 @@ private data class ProfileEditCompletion(val sequence: Int, val result: Result<U
 @Composable
 internal fun ProfileManagementPanel(profiles: List<Profile>, activeProfileId: String,
     onEdit: (Profile) -> Unit, onAdd: () -> Unit, onBack: () -> Unit,
-    startup: ProfileStartup, onStartupChange: (ProfileStartup) -> Unit) {
-    var choosingStartup by remember { mutableStateOf(false) }
+    startup: ProfileStartup, onStartup: () -> Unit) {
     TvPanel("Profiles", onBack = onBack) {
         profiles.forEach { profile -> key(profile.id) {
             val active = profile.id == activeProfileId
@@ -41,12 +40,30 @@ internal fun ProfileManagementPanel(profiles: List<Profile>, activeProfileId: St
         if (profiles.size < 12) TvSettingRow("Add profile", icon = Icons.Default.Add, onClick = onAdd)
         else Text("Up to twelve profiles are supported.", style = MaterialTheme.typography.bodySmall)
         TvSettingRow("On startup & wake", detail = startup.label(), icon = Icons.Default.PowerSettingsNew,
-            onClick = { choosingStartup = true })
+            onClick = onStartup)
         Text("Ask requires a PIN for each adult. Other apps stay in control while they are open.",
             style = MaterialTheme.typography.bodySmall)
     }
-    if (choosingStartup) TvChoiceDialog("On startup & wake", ProfileStartup.entries, startup,
-        { it.label() }, onStartupChange, { choosingStartup = false })
+}
+
+@Composable
+internal fun ProfileStartupPanel(startup: ProfileStartup, onStartupChange: (ProfileStartup) -> Unit,
+    standbySource: String?, homeAssistantConfigured: Boolean, onStandby: () -> Unit, onBack: () -> Unit) {
+    TvPanel("Startup & wake", onBack = onBack) {
+        ProfileStartup.entries.forEach { choice ->
+            TvChoiceRow(choice.label(), selected = startup == choice,
+                onClick = { if (choice != startup) onStartupChange(choice) })
+        }
+        Text("Ask requires a PIN for each adult. Returning from another app keeps the current profile.",
+            style = MaterialTheme.typography.bodySmall)
+        if (homeAssistantConfigured) {
+            TvSettingRow("TV standby detection", detail = standbySource ?: "Android screen-off",
+                icon = Icons.Default.PowerSettingsNew, onClick = onStandby)
+            Text("Optional: use your TV’s Home Assistant state only if the Android box stays awake when the screen turns off.",
+                style = MaterialTheme.typography.bodySmall)
+        } else Text("Android screen-off detection is used. Connect Home Assistant if your box stays awake when the television turns off.",
+            style = MaterialTheme.typography.bodySmall)
+    }
 }
 
 private fun ProfileStartup.label() = when (this) {
@@ -55,7 +72,7 @@ private fun ProfileStartup.label() = when (this) {
 }
 
 @Composable
-internal fun ProfileEditor(profile: Profile, profiles: List<Profile>, apps: List<AppEntry>,
+internal fun ProfileEditor(profile: Profile, profiles: List<Profile>, apps: List<AppEntry>, startup: ProfileStartup,
     onSave: (Profile, String, (Result<Unit>) -> Unit) -> Unit,
     onDelete: (Profile, (Result<Unit>) -> Unit) -> Unit,
     onSetApp: (Profile, String, Boolean, (Result<Unit>) -> Unit) -> Unit,
@@ -94,7 +111,7 @@ internal fun ProfileEditor(profile: Profile, profiles: List<Profile>, apps: List
     val existing = profiles.any { it.id == profile.id }
     val changed = !existing || name.trim() != currentProfile.name || child != currentProfile.child || pin.isNotEmpty()
     val otherProfiles = profiles.filterNot { it.id == profile.id }
-    val needsPin = !child && otherProfiles.any { it.child } && currentProfile.pinHash == null
+    val needsPin = !child && (startup == ProfileStartup.Ask || otherProfiles.any { it.child }) && currentProfile.pinHash == null
     if (editingApps && existing && currentProfile.child) {
         ProfileAppAccessPanel(currentProfile, apps, onSetApp, onBack = { editingApps = false })
         return
@@ -134,7 +151,8 @@ internal fun ProfileEditor(profile: Profile, profiles: List<Profile>, apps: List
             NativeTextField(pinLabel, pin, {
                 if (pending == null && it.length <= 4 && it.all { digit -> digit in '0'..'9' }) { pin = it; localError = null }
             }, secret = true, numeric = true)
-            if (needsPin) Text("A parent PIN is required when child profiles are enabled.", style = MaterialTheme.typography.bodySmall)
+            if (needsPin) Text(if (startup == ProfileStartup.Ask) "Ask who’s watching requires a PIN for every adult."
+                else "A parent PIN is required when child profiles are enabled.", style = MaterialTheme.typography.bodySmall)
         }
         if (changed || pending == ProfileEditOperation.Save) TvSettingRow(if (pending == ProfileEditOperation.Save) "Saving…" else "Save profile",
             icon = Icons.Default.Check, onClick = save@ {

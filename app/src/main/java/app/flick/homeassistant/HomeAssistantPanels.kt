@@ -69,16 +69,7 @@ internal fun HomeAssistantControlsPanel(controls: List<HaControl>, connectionSta
 @Composable
 internal fun HomeAssistantSetupPanel(configuration: HaConfiguration, connectionState: HaConnectionState, busy: Boolean,
     onConfigure: (String, String) -> Unit, onRetry: () -> Unit, onBack: () -> Unit, onChooseControls: () -> Unit,
-    onIntegration: () -> Unit,
-    displayPower: HaDisplayPower = if (configuration.displayPowerEntity == null) HaDisplayPower.Disabled else HaDisplayPower.Unknown,
-    onDiscoverDisplayPlayers: (suspend () -> List<HaEntity>)? = null,
-    onSaveDisplayPowerEntity: (suspend (HaControlSpec?) -> Unit)? = null) {
-    var choosingDisplay by remember(configuration.url, configuration.configured) { mutableStateOf(false) }
-    if (choosingDisplay && onDiscoverDisplayPlayers != null && onSaveDisplayPowerEntity != null) {
-        HomeDisplayPowerPicker(configuration.displayPowerEntity, onDiscoverDisplayPlayers, onSaveDisplayPowerEntity,
-            onBack = { choosingDisplay = false })
-        return
-    }
+    onIntegration: () -> Unit, connectionDetail: String) {
     var url by remember { mutableStateOf(configuration.url) }
     var token by remember { mutableStateOf("") }
     LaunchedEffect(configuration.url, configuration.configured) {
@@ -94,27 +85,14 @@ internal fun HomeAssistantSetupPanel(configuration: HaConfiguration, connectionS
             if (connectionState == HaConnectionState.Offline) TvSettingRow(if (busy) "Retrying…" else "Retry",
                 icon = Icons.Default.Refresh, onClick = { if (!busy) onRetry() })
             val count = configuration.controls.size
-            TvSettingRow("Choose controls", detail = when (count) {
+            TvSettingRow("Controls", detail = when (count) {
                 0 -> "Add lights, switches and scenes"
                 1 -> "1 control selected"
                 else -> "$count controls selected"
             }, icon = Icons.Default.Tune,
                 onClick = { if (!busy) onChooseControls() })
-            if (onDiscoverDisplayPlayers != null && onSaveDisplayPowerEntity != null) {
-                val status = when (displayPower) {
-                    HaDisplayPower.Disabled -> "Not selected"
-                    HaDisplayPower.Unknown -> "State unavailable"
-                    HaDisplayPower.On -> "TV on"
-                    HaDisplayPower.Off -> "TV off"
-                }
-                TvSettingRow("Physical TV", detail = configuration.displayPowerEntity?.let { "${it.name}\n$status" }
-                    ?: "Detect when your TV turns off", icon = Icons.Default.Tv,
-                    onClick = { if (!busy) choosingDisplay = true })
-            }
-            TvSettingRow("TV integration", detail = "Notifications and TV management", icon = Icons.Default.Tv,
+            TvSettingRow("TV connection", detail = connectionDetail, icon = Icons.Default.Tv,
                 onClick = onIntegration)
-            TvSettingRow("Disconnect", icon = Icons.Default.LinkOff,
-                onClick = { if (!busy) onConfigure("", "") })
         } else {
             Text("Connect your lights, switches and scenes.", style = MaterialTheme.typography.bodyMedium)
             NativeTextField("Home Assistant address", url, { url = it.take(500) })
@@ -124,6 +102,8 @@ internal fun HomeAssistantSetupPanel(configuration: HaConfiguration, connectionS
             Text("Use a separate, non-admin account. In its Home Assistant profile, open Security and create a long-lived access token. It stays private on this TV.",
                 style = MaterialTheme.typography.bodySmall, color = FlickColors.Secondary)
         }
+        if (configuration.configured) TvSettingRow("Disconnect", icon = Icons.Default.LinkOff,
+            onClick = { if (!busy) onConfigure("", "") })
     }
 }
 

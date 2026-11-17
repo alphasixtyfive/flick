@@ -67,6 +67,8 @@ internal sealed interface HomePanel {
     data object Integration : HomePanel
     data object Updates : HomePanel
     data object ManageProfiles : HomePanel
+    data object ProfileStartup : HomePanel
+    data object TvStandby : HomePanel
     data class EditProfile(val profile: Profile) : HomePanel
     data class Pin(val profile: Profile) : HomePanel
     data class AppOptions(val app: AppEntry, val fromAllApps: Boolean = false) : HomePanel

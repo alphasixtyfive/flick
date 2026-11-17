@@ -19,7 +19,7 @@ Their order is saved separately. They cannot add apps to their allowlist.
 
 Returning from a streaming app keeps the current Flick session. Ask who's watching
 resets on process startup or when Android reports the screen turning off. For a box
-that stays awake when the television turns off, see [Physical TV monitoring](../SETUP.md#profiles).
+that stays awake when the television turns off, see [TV standby detection](../SETUP.md#profiles).
 
 ## Why an app can still open as the adult
 
