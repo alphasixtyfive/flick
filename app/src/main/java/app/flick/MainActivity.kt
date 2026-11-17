@@ -67,11 +67,15 @@ class MainActivity : ComponentActivity() {
         if (uris.isNotEmpty() && model.canManage()) model.addWallpaperPhotos(uris.map(Uri::toString))
     }
     private val setupPicker = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        if (uri != null) lifecycleScope.launch {
-            runCatching { withContext(Dispatchers.IO) {
-                contentResolver.openInputStream(uri)?.use(SetupImport::read)
-                    ?: error("Setup file could not be read")
-            } }.onSuccess(::confirmImport).onFailure { model.message("Setup file could not be read") }
+        if (uri != null && model.canManage()) lifecycleScope.launch {
+            try {
+                val raw = withContext(Dispatchers.IO) {
+                    contentResolver.openInputStream(uri)?.use(SetupImport::read)
+                        ?: error("Setup file could not be read")
+                }
+                confirmImport(raw)
+            } catch (cancelled: CancellationException) { throw cancelled }
+            catch (_: Exception) { model.message("Setup file could not be read") }
         }
     }
 
@@ -222,7 +226,16 @@ class MainActivity : ComponentActivity() {
 
     private fun confirmImport(raw: String) {
         if (!model.canManage()) { model.message("Choose an adult profile before importing setup"); return }
-        val parsed = runCatching { SetupImport.parse(raw) }.getOrElse { model.message("This setup file is invalid"); return }
+        lifecycleScope.launch {
+            val parsed = try { withContext(Dispatchers.Default) { SetupImport.parse(raw) } }
+                catch (cancelled: CancellationException) { throw cancelled }
+                catch (_: Exception) { model.message("This setup file is invalid"); return@launch }
+            if (!model.canManage()) { model.message("Choose an adult profile before importing setup"); return@launch }
+            showImportConfirmation(parsed)
+        }
+    }
+
+    private fun showImportConfirmation(parsed: SetupImport) {
         AlertDialog.Builder(this).setTitle("Import Flick setup?")
             .setMessage("Replace settings and ${parsed.settings.profiles.size} profiles? Existing setup stays unchanged until you choose Import.")
             .setNegativeButton("Cancel", null).setPositiveButton("Import") { _, _ ->

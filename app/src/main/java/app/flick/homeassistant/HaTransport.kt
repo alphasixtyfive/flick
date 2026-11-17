@@ -44,8 +44,9 @@ internal class HaTransport(private val client: OkHttpClient) {
                             in 300..399 -> throw HaException("Check the Home Assistant server address")
                             else -> throw HaException("Home Assistant could not complete the request")
                         }
-                        val stream = it.body?.byteStream() ?: return@use ""
-                        if (it.body!!.contentLength() > maximumBytes) throw HaException("The Home Assistant response is too large")
+                        val responseBody = it.body ?: return@use ""
+                        if (responseBody.contentLength() > maximumBytes) throw HaException("The Home Assistant response is too large")
+                        val stream = responseBody.byteStream()
                         val bytes = ByteArrayOutputStream()
                         val buffer = ByteArray(8192)
                         while (true) {

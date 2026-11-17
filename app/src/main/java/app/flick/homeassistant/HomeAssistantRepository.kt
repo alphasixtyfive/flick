@@ -24,6 +24,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.Semaphore
@@ -226,7 +227,7 @@ class HomeAssistantRepository(context: Context, scope: CoroutineScope) {
     }
 
     suspend fun setPower(id: String, on: Boolean) = coroutineScope {
-        val job = currentCoroutineContext()[Job]!!
+        val job = currentCoroutineContext().job
         actions[job] = id
         try {
             ready()
@@ -271,7 +272,7 @@ class HomeAssistantRepository(context: Context, scope: CoroutineScope) {
     }
 
     suspend fun runScene(id: String) = coroutineScope {
-        val job = currentCoroutineContext()[Job]!!
+        val job = currentCoroutineContext().job
         actions[job] = id
         try {
             ready()
@@ -348,12 +349,13 @@ class HomeAssistantRepository(context: Context, scope: CoroutineScope) {
             return
         }
         val epoch = generation.get()
+        val observedIds = configuration.value.observedEntityIds()
         val httpConfirmed = authenticatedHttp || (keepHttp && health.httpAvailable)
         health = HaConnectionHealth(httpAvailable = httpConfirmed)
         mutableConnectionState.value = health.state
         session = worker.launch {
-            val events = if (configuration.value.observedEntityIds().isNotEmpty()) HaEventStream(eventsClient, this, connection,
-                selected = { configuration.value.observedEntityIds() },
+            val events = if (observedIds.isNotEmpty()) HaEventStream(eventsClient, this, connection,
+                selected = { observedIds },
                 observed = { id, value -> observed(id, value, epoch) },
                 ready = {
                     reportEvents(epoch, available = true)
