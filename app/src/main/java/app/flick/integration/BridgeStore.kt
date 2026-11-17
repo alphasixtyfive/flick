@@ -73,12 +73,7 @@ internal class BridgeStore(context: Context) {
 
     fun claim(requestId: String): Boolean {
         val requests = history ?: run {
-            val raw = preferences.getString("requests", "[]").orEmpty()
-            val values = runCatching {
-                require(raw.length <= 24 * 1024)
-                val array = JSONArray(raw)
-                (0 until minOf(array.length(), 256)).mapNotNull { array.opt(it) as? String }.filter(BridgeProtocol::validId)
-            }.getOrDefault(emptyList())
+            val values = readBridgeRequestHistory(preferences.getString("requests", null))
             BridgeRequestHistory(values).also { history = it }
         }
         if (!requests.claim(requestId)) return false

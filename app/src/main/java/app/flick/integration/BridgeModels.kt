@@ -44,8 +44,27 @@ internal sealed interface BridgeEvent {
     class Command(val value: BridgeCommand) : BridgeEvent
 }
 
+private const val REQUEST_HISTORY_LIMIT = 256
+
+/** Missing history is a new pairing; damaged history must not authorize replaying old requests. */
+internal fun readBridgeRequestHistory(raw: String?): List<String> {
+    if (raw == null) return emptyList()
+    require(raw.length <= 24 * 1024) { "Stored request history is too large" }
+    val record = BridgeProtocol.frame("{\"requests\":$raw}")
+    require(record.length() == 1) { "Invalid stored request history" }
+    val array = record.getJSONArray("requests")
+    require(array.length() <= REQUEST_HISTORY_LIMIT) { "Stored request history is too large" }
+    val values = (0 until array.length()).map { index ->
+        val id = array.opt(index) as? String ?: error("Invalid stored request ID")
+        require(BridgeProtocol.validId(id)) { "Invalid stored request ID" }
+        id
+    }
+    require(values.distinct().size == values.size) { "Duplicate stored request IDs" }
+    return values
+}
+
 /** Claimed requests stay claimed even if a connection closes before their result arrives. */
-internal class BridgeRequestHistory(values: List<String> = emptyList(), private val limit: Int = 256) {
+internal class BridgeRequestHistory(values: List<String> = emptyList(), private val limit: Int = REQUEST_HISTORY_LIMIT) {
     private val ids = LinkedHashSet(values.takeLast(limit))
     fun claim(id: String): Boolean {
         if (!ids.add(id)) return false
