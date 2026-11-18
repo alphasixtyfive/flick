@@ -48,7 +48,7 @@ fun TvPanel(
     LaunchedEffect(title) { scroll.scrollTo(0) }
     PanelShell(title, onBack, focusKey) {
         Column(
-            Modifier.fillMaxWidth().weight(1f).verticalScroll(scroll).padding(4.dp),
+            Modifier.fillMaxWidth().weight(1f).verticalScroll(scroll).padding(TvLayout.PanelContentPadding),
             verticalArrangement = Arrangement.spacedBy(4.dp),
             content = content,
         )
@@ -68,7 +68,7 @@ fun TvLazyPanel(
     PanelShell(title, onBack, focusKey) {
         LazyColumn(
             Modifier.fillMaxWidth().weight(1f), state = scroll,
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(4.dp),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(TvLayout.PanelContentPadding),
             verticalArrangement = Arrangement.spacedBy(4.dp),
             content = content,
         )
@@ -86,8 +86,7 @@ private fun PanelShell(
     val initialFocus = remember { FocusRequester() }
     val windowFocused = LocalWindowInfo.current.isWindowFocused
     // Structural changes need a new target; returning from a dialog keeps the caller's focus.
-    var focusPending by remember { mutableStateOf(true) }
-    LaunchedEffect(title, focusKey) { focusPending = true }
+    var focusPending by remember(title, focusKey) { mutableStateOf(true) }
     LaunchedEffect(title, focusKey, windowFocused, focusPending) {
         if (windowFocused && focusPending) {
             withFrameNanos { }
@@ -103,7 +102,9 @@ private fun PanelShell(
                 .focusRequester(initialFocus).focusProperties { exit = { FocusRequester.Cancel } }.focusGroup(),
             verticalArrangement = Arrangement.spacedBy(TvLayout.SectionGap),
         ) {
-            Text(title, style = MaterialTheme.typography.titleLarge, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(title, style = MaterialTheme.typography.titleLarge, maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(horizontal = TvLayout.PanelHeadingInset))
             content()
         }
     }

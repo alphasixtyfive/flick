@@ -120,7 +120,7 @@ internal fun TvOverlayTheme(content: @Composable () -> Unit) {
         current.copy(
             titleLarge = current.titleLarge.size(22, 28).copy(fontWeight = FontWeight.Normal),
             titleMedium = current.titleMedium.size(16, 24),
-            titleSmall = current.titleSmall.size(14, 20), bodyLarge = current.bodyLarge.size(14, 20),
+            titleSmall = current.titleSmall.size(14, 20), bodyLarge = current.bodyLarge.size(16, 24),
             bodyMedium = current.bodyMedium.size(14, 20), bodySmall = current.bodySmall.size(12, 16),
             labelLarge = current.labelLarge.size(14, 20), labelMedium = current.labelMedium.size(12, 16),
             labelSmall = current.labelSmall.size(11, 16),

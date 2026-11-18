@@ -1,29 +1,16 @@
 package app.flick.home
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.withFrameNanos
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.text.style.TextAlign
 import androidx.tv.material3.Text
 import androidx.tv.material3.MaterialTheme
 import coil.compose.AsyncImage
@@ -33,7 +20,6 @@ import app.flick.profiles.ProfilePin
 import app.flick.profiles.ProfilePickerBackdrop
 import app.flick.ui.components.TvDialog
 import app.flick.ui.components.TvSettingRow
-import app.flick.ui.theme.TvLayout
 
 internal fun HomePanel.isOverlay() = this is HomePanel.AppOptions || this is HomePanel.ContinueOptions ||
     this == HomePanel.Profiles || this is HomePanel.Pin || this == HomePanel.AllApps
@@ -43,9 +29,9 @@ internal fun HomeOverlays(panel: HomePanel, state: HomeState, actions: HomeActio
     isCurrent: () -> Boolean, onClose: () -> Unit, onAppOptionsBack: () -> Unit, onPanel: (HomePanel) -> Unit,
     onMove: (AppEntry) -> Unit, onRemoveContinue: () -> Unit,
     focusedApp: String? = null, onFocusedApp: (String) -> Unit = {}) {
-    // The drawer keeps its window, scroll and focus target while its menu is on top.
+    // The page stays mounted with its scroll and focus target while its menu is on top.
     if (panel == HomePanel.AllApps || panel is HomePanel.AppOptions && panel.fromAllApps) {
-        AllAppsDialog(state, actions, allAppsScroll, focusedApp, onFocusedApp, onPanel, onClose,
+        AllAppsDrawer(state, actions, allAppsScroll, focusedApp, onFocusedApp, onPanel, onClose,
             isInteractive = { panel == HomePanel.AllApps && isCurrent() })
     }
     when (panel) {
@@ -96,50 +82,5 @@ internal fun HomeOverlays(panel: HomePanel, state: HomeState, actions: HomeActio
             }, onSuccess = onClose, onConfirm = { pin, complete -> actions.chooseProfile(panel.profile, pin, complete) })
         }
         else -> Unit
-    }
-}
-
-/** Returning from an app's menu restores its tile without resetting the grid's scroll position. */
-@Composable
-private fun AllAppsDialog(state: HomeState, actions: HomeActions, scroll: LazyGridState,
-    focusedApp: String?, onFocusedApp: (String) -> Unit, onPanel: (HomePanel) -> Unit, onClose: () -> Unit,
-    isInteractive: () -> Boolean) {
-    val requesters = remember { mutableMapOf<String, FocusRequester>() }
-    val latestFocusedApp by rememberUpdatedState(focusedApp)
-    val packages = state.apps.map { it.packageName }
-    TvDialog("All apps", onDismiss = { if (isInteractive()) onClose() }, width = 760.dp, requestInitialFocus = false) {
-        val windowFocused = LocalWindowInfo.current.isWindowFocused
-        LaunchedEffect(packages, windowFocused) {
-            if (!windowFocused || packages.isEmpty()) return@LaunchedEffect
-            val target = latestFocusedApp?.takeIf { it in packages } ?: packages.first()
-            val index = packages.indexOf(target)
-            if (scroll.layoutInfo.visibleItemsInfo.none { it.index == index }) scroll.scrollToItem(index)
-            withFrameNanos { }
-            requesters[target]?.requestFocus()
-        }
-        LazyVerticalGrid(columns = GridCells.Fixed(5), state = scroll,
-            modifier = Modifier.fillMaxWidth().heightIn(max = 344.dp), contentPadding = PaddingValues(6.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            items(state.apps, key = { it.packageName }) { app ->
-                Column(horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    val focus = requesters.getOrPut(app.packageName) { FocusRequester() }
-                    AppCard(app, compact = true,
-                        modifier = Modifier.focusRequester(focus).onFocusChanged {
-                            if (it.isFocused && isInteractive()) onFocusedApp(app.packageName)
-                        },
-                        onClick = { if (isInteractive()) actions.launchApp(app) },
-                        onLongClick = if (!HomePolicy.canManage(state.settings)) null else ({
-                            if (isInteractive()) {
-                                onFocusedApp(app.packageName)
-                                onPanel(HomePanel.AppOptions(app, fromAllApps = true))
-                            }
-                        }))
-                    Text(app.name, style = MaterialTheme.typography.bodyMedium, maxLines = 1,
-                        overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center,
-                        modifier = Modifier.fillMaxWidth())
-                }
-            }
-        }
     }
 }

@@ -4,6 +4,8 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.LinearOutSlowInEasing
+import androidx.compose.animation.core.FastOutLinearInEasing
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
@@ -50,6 +52,7 @@ import app.flick.ui.components.navigationFeedback
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import app.flick.ui.icons.FlickIcons
 import app.flick.ui.theme.homeMetadataStyle
 import app.flick.wallpaper.WallpaperBackground
@@ -114,10 +117,10 @@ fun FlickScreen(state: HomeState, actions: HomeActions) {
     var hadPanel by remember { mutableStateOf(false) }
     var initialHomeFocusPending by remember { mutableStateOf(true) }
     var profilePlaced by remember { mutableStateOf(false) }
-    // Dialog windows own their focus; profile overlays cover Home and disable its controls.
-    val profileOverlay = panel == HomePanel.Profiles || panel is HomePanel.Pin
-    val backgroundEnabled = (panel?.isOverlay() == true && !profileOverlay) ||
-        (panel == null && !panelVisibility.currentState && !panelVisibility.targetState)
+    // Home receives focus only after its panels and overlays have closed.
+    val backgroundEnabled = panel == null && !panelVisibility.currentState && !panelVisibility.targetState
+    val appsCoverHome = panel == HomePanel.AllApps || (panel as? HomePanel.AppOptions)?.fromAllApps == true
+    val homeSemantics = if (appsCoverHome) Modifier.clearAndSetSemantics {} else Modifier
     @OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
     fun homeFocus(id: String, startBoundary: Boolean = false, endBoundary: Boolean = false): Modifier = Modifier
         .focusProperties {
@@ -274,7 +277,8 @@ fun FlickScreen(state: HomeState, actions: HomeActions) {
                 modifier = Modifier.fillMaxSize(),
             )
         }
-        HomeHeader(Modifier.fillMaxWidth().padding(horizontal = TvLayout.SafeHorizontal, vertical = TvLayout.SafeVertical),
+        HomeHeader(Modifier.fillMaxWidth().padding(horizontal = TvLayout.SafeHorizontal, vertical = TvLayout.SafeVertical)
+            .then(homeSemantics),
             message = homeText, messageStyle = messageStyle,
             clock = {
                 ClockWeather(state.settings.clock24, state.settings.showWeather,
@@ -310,13 +314,15 @@ fun FlickScreen(state: HomeState, actions: HomeActions) {
             }
         }
 
-        Column(Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(start = TvLayout.SafeHorizontal, end = TvLayout.SafeHorizontal, bottom = TvLayout.AppDockBottom),
+        Column(Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(start = TvLayout.SafeHorizontal, end = TvLayout.SafeHorizontal, bottom = TvLayout.AppDockBottom)
+            .then(homeSemantics),
             verticalArrangement = Arrangement.spacedBy(24.dp)) {
             if (!child && state.settings.showContinue && state.continueItems.isNotEmpty()) Column(
                 verticalArrangement = Arrangement.spacedBy(TvLayout.Gap),
             ) {
-                Text("Continue watching", fontSize = (16 * fontScale).sp, color = Color.White.copy(alpha = .84f))
-                LazyRow(state = continueScroll, horizontalArrangement = Arrangement.spacedBy(18.dp), contentPadding = PaddingValues(8.dp)) {
+                Text("Continue watching", fontSize = (16 * fontScale).sp, color = Color.White.copy(alpha = .84f),
+                    modifier = Modifier.padding(horizontal = TvLayout.HomeRowPadding))
+                LazyRow(state = continueScroll, horizontalArrangement = Arrangement.spacedBy(18.dp), contentPadding = PaddingValues(TvLayout.HomeRowPadding)) {
                     itemsIndexed(state.continueItems, key = { _, item -> item.id }) { index, item ->
                         ContinueCard(item, modifier = homeFocus("show:" + item.id,
                             startBoundary = index == 0, endBoundary = index == state.continueItems.lastIndex), onClick = { actions.openContinue(item) },
@@ -325,7 +331,7 @@ fun FlickScreen(state: HomeState, actions: HomeActions) {
                 }
             }
             if (moving != null) Text("Use Left or Right to move. OK saves. Back cancels.", style = MaterialTheme.typography.bodySmall)
-            LazyRow(state = appsScroll, horizontalArrangement = Arrangement.spacedBy(18.dp), contentPadding = PaddingValues(8.dp)) {
+            LazyRow(state = appsScroll, horizontalArrangement = Arrangement.spacedBy(18.dp), contentPadding = PaddingValues(TvLayout.HomeRowPadding)) {
                 itemsIndexed(displayedApps, key = { _, app -> app.packageName }) { index, app ->
                     AppCard(app, modifier = homeFocus("app:" + app.packageName,
                         startBoundary = index == 0, endBoundary = child && index == displayedApps.lastIndex),
@@ -351,8 +357,11 @@ fun FlickScreen(state: HomeState, actions: HomeActions) {
         }
 
 
-        AnimatedVisibility(visibleState = panelVisibility, enter = slideInHorizontally(tween(180)) { it },
-            exit = slideOutHorizontally(tween(160)) { it }, modifier = Modifier.align(Alignment.CenterEnd)
+        AnimatedVisibility(visibleState = panelVisibility, enter = slideInHorizontally(tween(200, easing = LinearOutSlowInEasing)) {
+            if (layoutDirection == LayoutDirection.Rtl) -it else it
+        }, exit = slideOutHorizontally(tween(160, easing = FastOutLinearInEasing)) {
+            if (layoutDirection == LayoutDirection.Rtl) -it else it
+        }, modifier = Modifier.align(Alignment.CenterEnd)
                 .onPreviewKeyEvent { panel == null || panel?.isOverlay() == true }) {
             val displayed = panel?.takeUnless { it.isOverlay() } ?: retainedPanel
             if (displayed == HomePanel.Settings) NativeSettingsPanel(state, actions, page = settingsPage,
