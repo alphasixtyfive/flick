@@ -80,7 +80,8 @@ fun NativeSettingsPanel(
                         if (!state.continueAccess) actions.requestContinueAccess()
                         else actions.updateSettings(settings, settings.copy(showContinue = !settings.showContinue))
                     })
-                if (settings.removedContinue.isNotEmpty()) TvSettingRow("Restore removed titles", icon = Icons.Default.Restore,
+                if (settings.showContinue && state.continueAccess && settings.removedContinue.isNotEmpty()) TvSettingRow(
+                    "Restore Continue watching", detail = "Show titles removed from this row", icon = Icons.Default.Restore,
                     onClick = { actions.updateSettings(settings, settings.copy(removedContinue = emptySet())) })
                 TvSettingRow("Top buttons", icon = Icons.Default.Tune, onClick = { onPageChange(SettingsPage.TopControls) })
                 TvSettingRow("Navigation sounds", detail = settings.navigationSound.label(), icon = Icons.AutoMirrored.Filled.VolumeUp,

@@ -32,8 +32,12 @@ button is hidden, an adult can hold the profile button or use the remote's Setti
 
 Press OK to open an app or Continue watching item; hold OK to open its options. Android handles
 App info and uninstall confirmation. Remove from Continue watching hides a title in Flick without
-changing streaming history. Restore removed titles is under Home screen settings.
-The app drawer uses a five-column grid with app names beneath the banners. A long-press menu stays
+changing streaming history. **Restore Continue watching** in Home screen settings shows those hidden
+titles again if their apps still offer them. It appears only while Continue watching is enabled and
+Flick has access to Android TV recommendations.
+
+All apps opens a full-screen grid with compact banners and app names. The number of columns adapts
+to the available width. Extra Home favourites scroll horizontally rather than wrapping. A long-press menu stays
 over the drawer; Back or adding/removing a Home favourite returns to the same app and scroll position.
 
 Everyone can rearrange the apps on their own Home screen: hold OK on an app, choose **Move**,
@@ -122,8 +126,10 @@ token under its profile → Security. Enter the server address and token in Sett
 then choose up to sixteen controls. Saved tokens are encrypted on the device and are not shown again.
 
 Flick supports lights, switches, toggle helpers (`input_boolean`), scenes/scripts and read-only sensors/binary
-sensors. Locks, alarms and gate controls are excluded. Rows show reported state, pending changes and
-errors; scenes run directly. If the server is offline, use Retry in Home Assistant settings.
+sensors. Locks, alarms and gate controls are excluded. Switches respond to a press while Home Assistant
+confirms the change. Slower requests show a small spinner in the switch; a failed request returns it to
+the reported state and shows an error. Scenes run directly. If the server is offline, use Retry in
+Home Assistant settings.
 
 ### TV connection
 
