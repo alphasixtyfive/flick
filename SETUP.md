@@ -4,7 +4,7 @@ Flick supports Android TV and Google TV devices running Android 8.0 or later.
 
 ## Install and choose HOME
 
-1. [Build the APK](README.md#build) and install it with Android's installer or an authorized ADB connection.
+1. Download `Flick-<version>.apk` from the [latest release](https://github.com/alphasixtyfive/flick/releases/latest) and install it with Android’s installer or ADB.
 2. Open Flick from the app list, then choose it in Android's Home/default-app settings.
 3. Check Home, Back, app launch and return with the physical remote.
 
@@ -14,7 +14,7 @@ Select the stock launcher before uninstalling Flick. Root and accessibility-serv
 
 ## Updates
 
-Open **Settings → About → Check for updates**. Flick checks the latest stable GitHub release
+Open **Settings → About → Updates**. Flick checks the latest stable GitHub release
 when you ask; there is no background update check. Choose **Download update**, then **Install update**.
 If Android asks, allow Flick under **Install unknown apps**, return to Flick and select
 **Install update** again. Android's installer asks you to confirm or cancel.

@@ -8,33 +8,22 @@
 
 <p align="center">
   <a href="https://github.com/alphasixtyfive/flick/releases/latest"><strong>Download APK</strong></a>
+  | <a href="https://github.com/alphasixtyfive/flick/releases">Release notes</a>
   | <a href="SETUP.md">Setup guide</a>
-  | <a href="docs/kids-profiles.md">Kids profiles</a>
-  | <a href="docs/home-assistant-examples.md">Home Assistant examples</a>
-  | <a href="https://github.com/alphasixtyfive/flick/issues">Report an issue</a>
+  | <a href="https://github.com/alphasixtyfive/flick/issues">Issues</a>
 </p>
 
-Flick puts your favourite apps and photos on the TV's home screen. Each person can have
-their own wallpaper and app order. Parents choose which apps appear for children and
-protect adult profiles with a PIN. Use the remote to open apps, move tiles or turn down
-the lights without opening a dashboard.
+Flick puts your favourite apps and photos on the TV home screen. Each person can have
+an app order and wallpaper of their own. Parents choose which apps appear for children
+and protect adult profiles with a PIN.
 
-Built with Kotlin and Compose for TV. Supports Android TV and Google TV devices running
-Android 8.0 or later.
+Flick runs on Android TV and Google TV devices with Android 8.0 or later.
 
-- Favourite apps, All apps and Continue watching, with remote long-press menus.
-- Adult and child profiles, parent PINs, profile photos and individual wallpapers.
-- App ordering saved separately for each profile; parents control children's allowed apps.
-- Photo slideshows from selected pictures, document folders or image URLs.
-- Nine built-in wallpapers, with offline previews and a separate [4K download collection](wallpapers/).
-- Clock, weather, navigation sounds and configurable home-screen controls.
-- Three colour themes, with simple JSON import and export.
-- Portable backups for profiles, preferences and local photos.
-- Home Assistant lights, switches, scenes and device status.
-- Optional TV pairing for notifications and remote profile, wallpaper and theme management.
-- Check for GitHub updates in Settings, then confirm installation through Android.
-
-See [themes](docs/themes.md) and [backup & restore](docs/backup.md) for details.
+- Keep favourite apps on Home and browse the full app grid. Continue watching uses recommendations supplied by your apps.
+- Use built-in wallpapers or a slideshow of your own photos. Download the [4K wallpaper collection](wallpapers/) separately.
+- Set up the clock, weather, navigation sounds and [colour themes](docs/themes.md).
+- Save profiles, preferences and local photos with [backup and restore](docs/backup.md).
+- Control lights and scenes from the remote, with optional TV notifications through Home Assistant.
 
 ## Get started
 
@@ -64,10 +53,8 @@ for installation, remote controls, photos and permissions.
   <tr><td align="center"><strong>Who's watching?</strong></td><td align="center"><strong>Lights and scenes from the remote</strong></td></tr>
 </table>
 
-Screenshots render Flick's Compose screens with fictional profiles and sample data
-in an isolated test environment.
-Open an image to see it at full size. More: [wallpapers](docs/screenshots/wallpapers.png)
-and [settings](docs/screenshots/settings.png).
+The screenshots use demo profiles. Select any image for a full-size view.
+See also [wallpapers](docs/screenshots/wallpapers.png) and [settings](docs/screenshots/settings.png).
 
 ## Kids profiles and streaming accounts
 
@@ -103,8 +90,6 @@ Replace the entity ID with the one on your paired TV's device page. See
 [Home Assistant examples](docs/home-assistant-examples.md) for camera previews,
 notification buttons, a dashboard card and wallpaper actions, or the
 [connection protocol](docs/home-assistant-protocol.md) for development details.
-
-For Windows PC sensors, notifications and controls, see [HASS Connect](https://github.com/alphasixtyfive/HASSConnect).
 
 ## Build
 

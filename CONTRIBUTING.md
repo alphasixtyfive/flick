@@ -42,6 +42,13 @@ only that verified APK as `Flick-<version>.apk`, with its SHA-256 checksum. GitH
 release-asset digest is also checked by Flick's updater. Never publish a CI artifact
 or a development APK as an update.
 
+## Publishing releases
+
+Create a new `v<version>` tag and GitHub release for each version. Mark the newest stable release
+as Latest. Keep earlier releases, tags and downloads available so users can refer to a version's
+notes or download the original build. Keep release notes short and describe the changes users will
+see, including any steps they need to take after updating.
+
 ## Changes
 
 Keep pull requests focused and describe the behaviour they change. Use the shared TV components;
