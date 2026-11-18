@@ -8,6 +8,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.MaterialTheme
@@ -20,6 +22,7 @@ import app.flick.ui.components.TvStatusRow
 import app.flick.ui.icons.FlickIcons
 import app.flick.ui.theme.FlickColors
 import app.flick.ui.theme.TvLayout
+import kotlinx.coroutines.delay
 
 @Composable
 internal fun HomeAssistantControlsPanel(controls: List<HaControl>, connectionState: HaConnectionState,
@@ -36,17 +39,27 @@ internal fun HomeAssistantControlsPanel(controls: List<HaControl>, connectionSta
         }
         controls.forEach { control -> key(control.id) {
             val scene = control.kind in HaPolicy.actionDomains
-            val available = control.state != "unavailable" && (scene || control.state !in listOf("unknown", null))
-            val on = control.state == "on"
             val toggle = control.kind in HaPolicy.powerDomains
+            val available = if (toggle) control.state == "on" || control.state == "off"
+                else control.state != "unavailable" && (scene || control.state !in listOf("unknown", null))
+            val on = control.state == "on"
+            val displayedOn = control.displayedOn
+            var showPending by remember { mutableStateOf(false) }
+            LaunchedEffect(control.pending, control.requestedOn) {
+                showPending = false
+                if (control.pending) {
+                    delay(800)
+                    showPending = true
+                }
+            }
             val detail = when {
-                control.pending -> if (scene) "Running…" else "Updating…"
                 connectionState != HaConnectionState.Connected -> "Waiting for Home Assistant"
                 !available -> "Unavailable"
-                control.error != null -> if (scene) "Couldn’t run. Try again." else "Couldn’t update. Try again."
+                !control.pending && control.error != null -> if (scene) "Couldn’t run. Try again." else "Couldn’t update. Try again."
+                scene && control.pending && showPending -> "Running…"
                 scene -> if (control.kind == "script") "Run script" else "Run scene"
-                control.brightness != null && on -> "Brightness ${control.brightness}%"
-                toggle -> if (on) "On" else "Off"
+                control.brightness != null && on && displayedOn == true -> "Brightness ${control.brightness}%"
+                toggle -> if (displayedOn == true) "On" else "Off"
                 else -> control.state.orEmpty().replaceFirstChar { it.uppercase() }
             }
             val icon = when {
@@ -57,8 +70,15 @@ internal fun HomeAssistantControlsPanel(controls: List<HaControl>, connectionSta
                 else -> Icons.Default.Info
             }
             if ((scene || toggle) && available && connectionState == HaConnectionState.Connected) {
-                TvSettingRow(control.name, detail = detail, checked = if (toggle) on else null,
-                    icon = icon,
+                TvSettingRow(control.name, detail = detail, checked = if (toggle) displayedOn else null,
+                    icon = icon, busy = toggle && control.pending && showPending,
+                    modifier = Modifier.semantics {
+                        if (control.pending) stateDescription = when (control.requestedOn) {
+                            true -> "Turning on"
+                            false -> "Turning off"
+                            null -> "Running"
+                        }
+                    },
                     onClick = {
                         if (!control.pending) {
                             if (scene) onScene(control) else onPower(control, !on)

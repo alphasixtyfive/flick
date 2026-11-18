@@ -179,7 +179,7 @@ class HomeAssistantRepository(context: Context, scope: CoroutineScope) {
                 generation.incrementAndGet()
                 val previous = controls.value.associateBy { it.id }
                 mutableConfiguration.value = configuration.value.copy(controls = selected)
-                mutableControls.value = selected.map { spec -> previous[spec.entityId]?.copy(name = spec.name, pending = false) ?: initial(spec) }
+                mutableControls.value = selected.map { spec -> previous[spec.entityId]?.copy(name = spec.name, pending = false, requestedOn = null) ?: initial(spec) }
             }
         }
         restartSession(keepHttp = true)
@@ -197,7 +197,7 @@ class HomeAssistantRepository(context: Context, scope: CoroutineScope) {
                 actions.keys.forEach { it.cancel() }
                 generation.incrementAndGet()
                 mutableConfiguration.value = configuration.value.copy(displayPowerEntity = selected)
-                mutableControls.update { list -> list.map { it.copy(pending = false) } }
+                mutableControls.update { list -> list.map { it.copy(pending = false, requestedOn = null) } }
             }
             restartSession(keepHttp = true)
         }
@@ -211,7 +211,7 @@ class HomeAssistantRepository(context: Context, scope: CoroutineScope) {
                 if (credentials == null) return@withLock
                 actions.keys.forEach { it.cancel() }
                 generation.incrementAndGet()
-                mutableControls.update { list -> list.map { it.copy(pending = false) } }
+                mutableControls.update { list -> list.map { it.copy(pending = false, requestedOn = null) } }
             }
             restartSession()
         }
@@ -239,7 +239,7 @@ class HomeAssistantRepository(context: Context, scope: CoroutineScope) {
                 if (domain !in HaPolicy.powerDomains) throw HaException("This control does not support switching")
                 val (connection, epoch) = snapshot()
                 advance(id)
-                pending(id, true, epoch = epoch)
+                pending(id, true, epoch = epoch, targetOn = on)
                 try {
                     withTimeout(6500) {
                         HaCommandConfirmation.await(
@@ -330,8 +330,8 @@ class HomeAssistantRepository(context: Context, scope: CoroutineScope) {
             ?.let { ((it / 255.0) * 100).toInt() }
         versions.getOrPut(id) { AtomicLong() }.incrementAndGet()
         val current = controls.value.firstOrNull { it.id == id }
-        val next = HaControl(id, spec.name, id.substringBefore('.'), state, brightness,
-            pending = current?.pending ?: false, error = if (state == null || state in setOf("unknown", "unavailable")) "Unavailable" else null)
+        val next = (current ?: initial(spec)).copy(name = spec.name, state = state, brightness = brightness,
+            error = if (state == null || state in setOf("unknown", "unavailable")) "Unavailable" else null)
         mutableControls.update { list -> list.map { if (it.id == id) next else it } }
         observations.tryEmit(next)
     }
@@ -446,9 +446,9 @@ class HomeAssistantRepository(context: Context, scope: CoroutineScope) {
     }
 
     @Synchronized
-    private fun pending(id: String, value: Boolean, error: String? = null, epoch: Long? = null) {
+    private fun pending(id: String, value: Boolean, error: String? = null, epoch: Long? = null, targetOn: Boolean? = null) {
         if (closed || (epoch != null && epoch != generation.get())) return
-        mutableControls.update { list -> list.map { if (it.id == id) it.copy(pending = value, error = error) else it } }
+        mutableControls.update { list -> list.map { if (it.id == id) it.withRequest(value, targetOn, error) else it } }
     }
 
     private fun initial(spec: HaControlSpec) = HaControl(spec.entityId, spec.name, spec.entityId.substringBefore('.'))
@@ -467,6 +467,7 @@ class HomeAssistantRepository(context: Context, scope: CoroutineScope) {
         closed = true; initialized.complete(Unit); credentials = null
         generation.incrementAndGet()
         mutableConnectionState.value = HaConnectionState.NotConfigured
+        mutableControls.update { list -> list.map { it.copy(pending = false, requestedOn = null) } }
         displayMonitor.connection(false)
         publishDisplayPower()
         client.closeAsync {

@@ -1,6 +1,10 @@
 package app.flick.ui.components
 
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -18,7 +22,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
@@ -35,13 +42,13 @@ import app.flick.ui.theme.TvLayout
 
 @Composable
 fun TvSettingRow(title: String, detail: String = "", checked: Boolean? = null, icon: ImageVector? = null,
-    modifier: Modifier = Modifier, onClick: () -> Unit) {
+    modifier: Modifier = Modifier, busy: Boolean = false, onClick: () -> Unit) {
     TvListRow(title, detail, icon, modifier.semantics {
         if (checked != null) {
             role = Role.Switch
             toggleableState = if (checked) ToggleableState.On else ToggleableState.Off
         }
-    }, onClick) { focused -> if (checked != null) NeutralSwitch(checked, focused) }
+    }, onClick) { focused -> if (checked != null) NeutralSwitch(checked, focused, busy) }
 }
 
 /** An exclusive choice has selection semantics rather than an on/off switch. */
@@ -97,8 +104,12 @@ private fun TvRowContent(title: String, detail: String, icon: ImageVector?, modi
 }
 
 @Composable
-private fun NeutralSwitch(checked: Boolean, focused: Boolean) {
+private fun NeutralSwitch(checked: Boolean, focused: Boolean, busy: Boolean) {
     val position by animateFloatAsState(if (checked) 1f else 0f, tween(140), label = "Switch position")
+    val rotation = if (busy) rememberInfiniteTransition(label = "Switch progress").animateFloat(
+        initialValue = 0f, targetValue = 360f,
+        animationSpec = infiniteRepeatable(tween(900, easing = LinearEasing)), label = "Progress rotation",
+    ) else null
     val track = when {
         checked && focused -> FlickColors.FocusForeground
         checked -> FlickColors.FocusBackground
@@ -106,10 +117,18 @@ private fun NeutralSwitch(checked: Boolean, focused: Boolean) {
         else -> lerp(FlickColors.SurfaceRaised, FlickColors.Foreground, .3f)
     }
     val thumb = if (checked == focused) FlickColors.FocusBackground else FlickColors.FocusForeground
+    val progress = if (checked == focused) FlickColors.FocusForeground else FlickColors.FocusBackground
     Canvas(Modifier.width(36.dp).height(20.dp)) {
         drawRoundRect(track, cornerRadius = CornerRadius(size.height / 2))
         val radius = 6.dp.toPx()
         val inset = 4.dp.toPx() + radius
-        drawCircle(thumb, radius, Offset(inset + position * (size.width - inset * 2), size.height / 2))
+        val center = Offset(inset + position * (size.width - inset * 2), size.height / 2)
+        drawCircle(thumb, radius, center)
+        rotation?.let {
+            val arcRadius = 3.5.dp.toPx()
+            drawArc(progress, startAngle = it.value, sweepAngle = 250f, useCenter = false,
+                topLeft = center - Offset(arcRadius, arcRadius), size = Size(arcRadius * 2, arcRadius * 2),
+                style = Stroke(1.25.dp.toPx(), cap = StrokeCap.Round))
+        }
     }
 }

@@ -14,7 +14,7 @@ data class HaConfiguration(
 internal fun HaConfiguration.observedEntityIds(): Set<String> =
     controls.mapTo(mutableSetOf()) { it.entityId }.apply { displayPowerEntity?.let { add(it.entityId) } }
 
-/** State always comes from Home Assistant. Pending describes a request, never an invented value. */
+/** Reported state stays separate from the target of an in-flight request. */
 data class HaControl(
     val id: String,
     val name: String,
@@ -22,8 +22,20 @@ data class HaControl(
     val state: String? = null,
     val brightness: Int? = null,
     val pending: Boolean = false,
-    val error: String? = null
+    val error: String? = null,
+    val requestedOn: Boolean? = null,
 )
+
+internal fun HaControl.withRequest(pending: Boolean, targetOn: Boolean? = null, error: String? = null): HaControl =
+    copy(pending = pending, requestedOn = targetOn.takeIf { pending && kind in HaPolicy.powerDomains }, error = error)
+
+/** A pending switch shows the requested position while reported state remains authoritative. */
+internal val HaControl.displayedOn: Boolean?
+    get() = when {
+        kind !in HaPolicy.powerDomains || (state != "on" && state != "off") -> null
+        pending && requestedOn != null -> requestedOn
+        else -> state == "on"
+    }
 
 enum class HaConnectionState(val label: String) {
     Unknown("Checking…"),
