@@ -1,7 +1,7 @@
 # Home Assistant on the TV
 
 Use Flick's side panel to control a few lights and scenes with the remote. Add the optional
-Flick TV integration when you also want notifications and launcher management from Home Assistant.
+Flick integration when you also want notifications and launcher management from Home Assistant.
 
 ![Sample Home Assistant controls in Flick](screenshots/home-assistant.png)
 
@@ -28,12 +28,12 @@ Flick excludes locks, alarms and gate controls.
 
 ## Pair the optional TV connection
 
-Install [Flick TV for Home Assistant](https://github.com/alphasixtyfive/flick-home-assistant)
+Install [Flick for Home Assistant](https://github.com/alphasixtyfive/flick-home-assistant)
 using its setup instructions. Its current documented requirements are Home Assistant 2026.11
 or later and Flick 0.2.2 or later.
 
 On the TV, open **Home Assistant → TV connection → Pair TV**. In an administrator's
-Home Assistant session, add **Flick TV** under **Settings → Devices & services** and enter
+Home Assistant session, add **Flick** under **Settings → Devices & services** and enter
 the six-digit code. Keep the TV connected with its non-admin account.
 
 Enable notifications in Flick. To show cards over another app, grant Android's
@@ -41,7 +41,7 @@ Enable notifications in Flick. To show cards over another app, grant Android's
 Use **Test notification** on the paired device page before building an automation.
 
 All names and IDs below are examples. Copy your actual entities from the paired device page.
-For `flick_tv` actions, use the action editor's **TV** device selector to choose a device.
+For `flick` actions, use the action editor's **TV** device selector to choose a device.
 Replace `YOUR_FLICK_DEVICE_ID` before running an example.
 
 ## Send a short message
@@ -86,7 +86,7 @@ Choose an existing camera. Home Assistant supplies a short-lived image link; the
 does not receive the camera's credentials.
 
 ```yaml
-action: flick_tv.notify
+action: flick.notify
 data:
   device_id: YOUR_FLICK_DEVICE_ID
   id: front-door-preview
@@ -94,7 +94,13 @@ data:
   message: Someone is at the door.
   camera_entity_id: camera.front_door
   timeout: 15
+  actions:
+    - id: flick_view_camera
+      label: View camera
 ```
+
+**View camera** opens the silent live feed in an unlocked adult profile. Remove the
+`actions` block for a photo-only alert.
 
 For an existing direct image URL, use `image: https://example.com/doorbell.jpg` instead
 of `camera_entity_id`. Use one image source. Images must be reachable by the TV without
@@ -103,7 +109,7 @@ a login prompt. Do not put passwords in URLs.
 ## Keep a reminder until it is dismissed
 
 ```yaml
-action: flick_tv.notify
+action: flick.notify
 data:
   device_id: YOUR_FLICK_DEVICE_ID
   id: tea-ready
@@ -118,12 +124,12 @@ clears queued cards. Reusing an ID updates the existing card.
 
 ## Add a notification button
 
-Buttons return named events to Home Assistant. They do not carry arbitrary service calls
+Custom buttons return named events to Home Assistant. They do not carry arbitrary service calls
 or open URLs. Up to two buttons are supported, and they appear only in an unlocked adult
 session. Child profiles receive the message without action buttons.
 
 ```yaml
-action: flick_tv.notify
+action: flick.notify
 data:
   device_id: YOUR_FLICK_DEVICE_ID
   id: tea-ready
@@ -142,7 +148,7 @@ button is selected:
 alias: Acknowledge the tea reminder from the TV
 triggers:
   - trigger: event
-    event_type: flick_tv_notification_action
+    event_type: flick_notification_action
     event_data:
       notification_id: tea-ready
       action_id: acknowledged
@@ -192,7 +198,7 @@ actions cannot be used as an unattended child-profile switch.
 Advance the slideshow once:
 
 ```yaml
-action: flick_tv.next_wallpaper
+action: flick.next_wallpaper
 data:
   device_id: YOUR_FLICK_DEVICE_ID
 ```
@@ -200,7 +206,7 @@ data:
 Change slideshow preferences:
 
 ```yaml
-action: flick_tv.set_wallpaper_options
+action: flick.set_wallpaper_options
 data:
   device_id: YOUR_FLICK_DEVICE_ID
   interval_seconds: 300
@@ -209,10 +215,10 @@ data:
 ```
 
 A fixed profile wallpaper takes precedence over the shared slideshow. To select a profile,
-use `flick_tv.list_profiles` to find its ID, then call:
+use `flick.list_profiles` to find its ID, then call:
 
 ```yaml
-action: flick_tv.select_profile
+action: flick.select_profile
 data:
   device_id: YOUR_FLICK_DEVICE_ID
   profile_id: kids

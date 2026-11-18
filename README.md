@@ -72,7 +72,7 @@ workaround, the SmartTube and Jellyfin examples, and the content controls still 
 Choose the lights, switches, scenes and sensors you want on the TV. Ordinary controls
 connect directly to Home Assistant using a dedicated non-admin account.
 
-The optional [Flick TV integration](https://github.com/alphasixtyfive/flick-home-assistant)
+The optional [Flick integration](https://github.com/alphasixtyfive/flick-home-assistant)
 adds TV notifications, profile management and wallpaper controls. Paired TVs can also show
 [Home screen text](SETUP.md#home-screen-text): one optional message configured in Home Assistant.
 Once paired, a simple notification looks like this:

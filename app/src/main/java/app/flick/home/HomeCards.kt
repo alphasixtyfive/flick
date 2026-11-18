@@ -20,8 +20,9 @@ import app.flick.ui.theme.TvLayout
 import coil.compose.AsyncImage
 
 @Composable
-internal fun AppCard(app: AppEntry, compact: Boolean, modifier: Modifier = Modifier, moving: Boolean = false, onClick: () -> Unit, onLongClick: (() -> Unit)?) {
-    TvFocusSurface(onClick = onClick, onLongClick = onLongClick,
+internal fun AppCard(app: AppEntry, compact: Boolean, modifier: Modifier = Modifier, moving: Boolean = false,
+    enabled: Boolean = true, onClick: () -> Unit, onLongClick: (() -> Unit)?) {
+    TvFocusSurface(onClick = onClick, onLongClick = onLongClick, enabled = enabled,
         modifier = modifier.width(TvLayout.appTileWidth(compact)).aspectRatio(16f / 9f)) {
         if (app.artwork != null) AsyncImage(model = app.artwork, contentDescription = app.name,
             contentScale = if (app.artworkIsBanner) ContentScale.Crop else ContentScale.Fit,
@@ -32,8 +33,9 @@ internal fun AppCard(app: AppEntry, compact: Boolean, modifier: Modifier = Modif
 }
 
 @Composable
-internal fun ContinueCard(item: ContinueItem, modifier: Modifier = Modifier, onClick: () -> Unit, onLongClick: () -> Unit) {
-    TvFocusSurface(onClick = onClick, onLongClick = onLongClick, modifier = modifier.size(168.dp, 94.5.dp)) {
+internal fun ContinueCard(item: ContinueItem, modifier: Modifier = Modifier, enabled: Boolean = true,
+    onClick: () -> Unit, onLongClick: () -> Unit) {
+    TvFocusSurface(onClick = onClick, onLongClick = onLongClick, enabled = enabled, modifier = modifier.size(168.dp, 94.5.dp)) {
         var failed by remember(item.artwork) { mutableStateOf(item.artwork.isNullOrBlank()) }
         if (!failed) AsyncImage(model = item.artwork, contentDescription = item.title,
             onError = { failed = true }, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())

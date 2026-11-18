@@ -47,6 +47,7 @@ import app.flick.profiles.ProfileSessionScreen
 import app.flick.settings.NativeSettingsPanel
 import app.flick.ui.components.TvAction
 import app.flick.ui.components.TvFocusSurface
+import app.flick.ui.components.TvMessage
 import app.flick.ui.components.RemotePress
 import app.flick.ui.components.navigationFeedback
 import androidx.compose.ui.semantics.semantics
@@ -57,7 +58,6 @@ import app.flick.ui.icons.FlickIcons
 import app.flick.ui.theme.homeMetadataStyle
 import app.flick.wallpaper.WallpaperBackground
 import app.flick.wallpaper.WallpaperPhoto
-import kotlinx.coroutines.delay
 
 internal sealed interface HomePanel {
     data object Settings : HomePanel
@@ -119,8 +119,7 @@ fun FlickScreen(state: HomeState, actions: HomeActions) {
     var profilePlaced by remember { mutableStateOf(false) }
     // Home receives focus only after its panels and overlays have closed.
     val backgroundEnabled = panel == null && !panelVisibility.currentState && !panelVisibility.targetState
-    val appsCoverHome = panel == HomePanel.AllApps || (panel as? HomePanel.AppOptions)?.fromAllApps == true
-    val homeSemantics = if (appsCoverHome) Modifier.clearAndSetSemantics {} else Modifier
+    val homeSemantics = if (backgroundEnabled) Modifier else Modifier.clearAndSetSemantics {}
     @OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
     fun homeFocus(id: String, startBoundary: Boolean = false, endBoundary: Boolean = false): Modifier = Modifier
         .focusProperties {
@@ -176,9 +175,6 @@ fun FlickScreen(state: HomeState, actions: HomeActions) {
         if (initialHomeFocusPending && profilePlaced && windowFocused && panel == null && backgroundEnabled && !hadPanel) {
             requesters["profile"]?.requestFocus()
         }
-    }
-    LaunchedEffect(state.message) {
-        if (state.message != null) { delay(6000); actions.dismissMessage() }
     }
     val fontScale = if (state.settings.largeText) 1.12f else 1f
     val messageStyle = homeMetadataStyle(fontScale)
@@ -288,6 +284,7 @@ fun FlickScreen(state: HomeState, actions: HomeActions) {
                 horizontalArrangement = Arrangement.spacedBy(TvLayout.Gap), verticalAlignment = Alignment.CenterVertically) {
                 TvFocusSurface(
                     onClick = { openPanel(HomePanel.Profiles) }, shape = CircleShape,
+                    enabled = backgroundEnabled,
                     onLongClick = if (child) null else ({ openSettings() }),
                     modifier = homeFocus("profile", startBoundary = true, endBoundary = lastTopAction == "profile")
                         .onPlaced { profilePlaced = true }.size(TvLayout.TopActionSize).semantics {
@@ -299,16 +296,19 @@ fun FlickScreen(state: HomeState, actions: HomeActions) {
                 }
                 if (!child && state.settings.showHomeAssistant && state.haConfiguration.configured) TvAction(
                     label = "Home Assistant", icon = FlickIcons.HomeAssistant,
+                    enabled = backgroundEnabled,
                     modifier = homeFocus("home-assistant", endBoundary = lastTopAction == "home-assistant"),
                     onClick = { openPanel(HomePanel.HomeAssistantControls) },
                 )
                 if (!child && state.settings.showSettings) TvAction(
                     label = "Settings", icon = Icons.Default.Settings,
+                    enabled = backgroundEnabled,
                     modifier = homeFocus("settings", endBoundary = lastTopAction == "settings"),
                     onClick = { openSettings() },
                 )
                 if (showNextWallpaper) TvAction(
                     label = "Next wallpaper", icon = Icons.Default.PhotoLibrary,
+                    enabled = backgroundEnabled,
                     modifier = homeFocus("wallpaper", endBoundary = true), onClick = actions.rotateWallpaper,
                 )
             }
@@ -324,7 +324,7 @@ fun FlickScreen(state: HomeState, actions: HomeActions) {
                     modifier = Modifier.padding(horizontal = TvLayout.HomeRowPadding))
                 LazyRow(state = continueScroll, horizontalArrangement = Arrangement.spacedBy(18.dp), contentPadding = PaddingValues(TvLayout.HomeRowPadding)) {
                     itemsIndexed(state.continueItems, key = { _, item -> item.id }) { index, item ->
-                        ContinueCard(item, modifier = homeFocus("show:" + item.id,
+                        ContinueCard(item, enabled = backgroundEnabled, modifier = homeFocus("show:" + item.id,
                             startBoundary = index == 0, endBoundary = index == state.continueItems.lastIndex), onClick = { actions.openContinue(item) },
                             onLongClick = { openPanel(HomePanel.ContinueOptions(item)) })
                     }
@@ -333,7 +333,7 @@ fun FlickScreen(state: HomeState, actions: HomeActions) {
             if (moving != null) Text("Use Left or Right to move. OK saves. Back cancels.", style = MaterialTheme.typography.bodySmall)
             LazyRow(state = appsScroll, horizontalArrangement = Arrangement.spacedBy(18.dp), contentPadding = PaddingValues(TvLayout.HomeRowPadding)) {
                 itemsIndexed(displayedApps, key = { _, app -> app.packageName }) { index, app ->
-                    AppCard(app, modifier = homeFocus("app:" + app.packageName,
+                    AppCard(app, enabled = backgroundEnabled, modifier = homeFocus("app:" + app.packageName,
                         startBoundary = index == 0, endBoundary = child && index == displayedApps.lastIndex),
                         compact = state.settings.compactTiles, moving = moving == app.packageName,
                         onClick = {
@@ -345,7 +345,7 @@ fun FlickScreen(state: HomeState, actions: HomeActions) {
                         onLongClick = { openPanel(HomePanel.AppOptions(app)) })
                 }
                 if (!child) item(key = "all-apps") {
-                    TvFocusSurface(onClick = { openPanel(HomePanel.AllApps) },
+                    TvFocusSurface(onClick = { openPanel(HomePanel.AllApps) }, enabled = backgroundEnabled,
                         modifier = homeFocus("all-apps", startBoundary = displayedApps.isEmpty(), endBoundary = true)
                             .width(TvLayout.appTileWidth(state.settings.compactTiles)).aspectRatio(16f / 9f)) {
                         Icon(Icons.Default.Apps, "All apps", Modifier.size(40.dp).align(Alignment.Center))
@@ -410,11 +410,7 @@ fun FlickScreen(state: HomeState, actions: HomeActions) {
                     }
                 }, focusedApp = focusedAllApp, onFocusedApp = { focusedAllApp = it })
         }
-        state.message?.let { message ->
-            Text(message, style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.align(Alignment.BottomCenter).padding(22.dp)
-                    .background(FlickColors.SurfaceRaised.copy(alpha = .94f)).padding(horizontal = 18.dp, vertical = 12.dp))
-        }
+        TvMessage(state.message, actions.dismissMessage)
     }
 }
 

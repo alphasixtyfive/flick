@@ -138,8 +138,6 @@ class FlickBridgeClient(
         }
     }
 
-    suspend fun awaitInitialized() { ready() }
-
     /** A sticky service may restore a saved pairing, never an expired pairing prompt. */
     suspend fun recoveryAllowed(): Boolean = withContext(Dispatchers.IO) {
         if (closed) return@withContext false
@@ -163,14 +161,14 @@ class FlickBridgeClient(
         val connection = active ?: return@withContext
         if (!state.value.paired || state.value.connection != BridgeConnection.Connected) return@withContext
         val data = status()
-        if (connection.isCurrent()) connection.send("flick_tv/status", data)
+        if (connection.isCurrent()) connection.send("flick/status", data)
     }
 
     suspend fun notificationAction(noticeId: String, actionId: String) {
         require(BridgeProtocol.validId(noticeId) && BridgeProtocol.validId(actionId)) { "Invalid notification action" }
         val connection = active ?: return
         if (state.value.paired && state.value.notificationsEnabled && connection.isCurrent()) {
-            connection.send("flick_tv/notification_action", JSONObject().put("notification_id", noticeId).put("action_id", actionId))
+            connection.send("flick/notification_action", JSONObject().put("notification_id", noticeId).put("action_id", actionId))
         }
     }
 
@@ -224,7 +222,7 @@ class FlickBridgeClient(
         val alive = AtomicBoolean(true)
         val connection = Connection(epoch, identity, ids, alive) { socket.get() }
         val homeText = HomeTextSubscription(
-            subscribe = { value -> connection.send("flick_tv/home_text", JSONObject()
+            subscribe = { value -> connection.send("flick/home_text", JSONObject()
                 .put("profile_id", value.profile.id).put("profile_generation", value.generation)) },
             unsubscribe = connection::unsubscribe,
             publish = { value ->
@@ -265,7 +263,7 @@ class FlickBridgeClient(
                                     active = connection
                                 }
                             }
-                            runCatching { connection.send("flick_tv/status", status()) }
+                            runCatching { connection.send("flick/status", status()) }
                         }
                     }
                     is BridgeEvent.Command -> handle(event.value, connection)
@@ -295,7 +293,7 @@ class FlickBridgeClient(
                         "auth_invalid" -> { subscribed.completeExceptionally(SignInRejected()); ended.complete(Unit) }
                         "auth_ok" -> {
                             check(authenticated.compareAndSet(false, true))
-                            val connect = JSONObject().put("id", 1).put("type", "flick_tv/connect").put("device_id", state.value.deviceId)
+                            val connect = JSONObject().put("id", 1).put("type", "flick/connect").put("device_id", state.value.deviceId)
                                 .put("name", state.value.name).put("protocol", BridgeProtocol.VERSION).put("device_secret", identity.secret)
                             if (!state.value.paired) {
                                 check(code != null && pairingOrigin == identity.origin && SystemClock.elapsedRealtime() < pairingDeadline)
@@ -398,7 +396,7 @@ class FlickBridgeClient(
         if (!connection.isCurrent()) return
         val value = JSONObject().put("request_id", requestId).put("success", error == null)
         if (error != null) value.put("error", error) else value.put("data", data ?: JSONObject())
-        connection.send("flick_tv/result", value)
+        connection.send("flick/result", value)
     }
 
     private inner class Connection(val epoch: Long, val identity: BridgeIdentity, private val ids: AtomicInteger,
@@ -412,7 +410,7 @@ class FlickBridgeClient(
         fun send(type: String, data: JSONObject): Int? = synchronized(connectionLock) {
             if (!isCurrent()) return@synchronized null
             val id = ids.incrementAndGet()
-            if (type == "flick_tv/status") {
+            if (type == "flick/status") {
                 if (!statusAcks.sent(id)) {
                     socket()?.cancel()
                     return@synchronized null

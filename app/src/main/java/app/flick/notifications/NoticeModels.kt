@@ -1,17 +1,24 @@
 package app.flick.notifications
 
-data class NoticeAction(val actionId: String, val label: String, val noticeId: String = "")
+data class NoticeAction(val actionId: String, val label: String, val noticeId: String = "", val camera: String? = null)
 
 data class TvNotice(
     val id: String,
     val title: String,
     val message: String = "",
-    val imageJpeg: ByteArray? = null,
+    val photo: NoticePhoto = NoticePhoto.None,
     val actions: List<NoticeAction> = emptyList(),
     val persistent: Boolean = false,
     val timeoutMillis: Long = 8_000,
     val interactive: Boolean = false,
 )
+
+sealed interface NoticePhoto {
+    data object None : NoticePhoto
+    class Loading : NoticePhoto
+    data class Ready(val jpeg: ByteArray) : NoticePhoto
+    data object Unavailable : NoticePhoto
+}
 
 data class NotificationState(
     val overlayPermissionGranted: Boolean = false,
@@ -40,11 +47,17 @@ internal object NoticePolicy {
             title = title,
             message = message,
             actions = actions,
-            imageJpeg = notice.imageJpeg?.takeIf { it.size <= MaxImageBytes }?.copyOf(),
+            photo = when (val photo = notice.photo) {
+                is NoticePhoto.Ready -> photoFromBytes(photo.jpeg)
+                else -> photo
+            },
             timeoutMillis = (notice.timeoutMillis.takeIf { it > 0 } ?: 8_000).coerceIn(1_000, 120_000),
             interactive = notice.interactive || notice.persistent || actions.isNotEmpty(),
         )
     }
+
+    fun photoFromBytes(bytes: ByteArray?): NoticePhoto =
+        if (bytes == null || bytes.size > MaxImageBytes) NoticePhoto.Unavailable else NoticePhoto.Ready(bytes.copyOf())
 
     fun fitImageSize(width: Int, height: Int): Pair<Int, Int> {
         require(width > 0 && height > 0)
@@ -59,19 +72,22 @@ internal class NoticeQueue(private val capacity: Int = 4) {
     private val notices = mutableListOf<TvNotice>()
     val current: TvNotice? get() = notices.firstOrNull()
 
-    fun offer(notice: TvNotice) {
+    /** Returns the replaced or evicted notice so its pending work can be cancelled. */
+    fun offer(notice: TvNotice): TvNotice? {
         val existing = notices.indexOfFirst { it.id == notice.id }
-        if (existing >= 0) { notices[existing] = notice; return }
-        if (notices.size == capacity) notices.removeAt(1)
+        if (existing >= 0) return notices.set(existing, notice)
+        val evicted = if (notices.size == capacity) notices.removeAt(1) else null
         notices += notice
+        return evicted
     }
 
     fun remove(id: String) { notices.removeAll { it.id == id } }
-    fun updateImage(id: String, bytes: ByteArray): Boolean {
-        val index = notices.indexOfFirst { it.id == id }
-        if (index < 0 || bytes.size > NoticePolicy.MaxImageBytes) return false
-        notices[index] = notices[index].copy(imageJpeg = bytes.copyOf())
-        return true
+    fun finishPhoto(id: String, pending: NoticePhoto.Loading, bytes: ByteArray?): NoticePhoto? {
+        val index = notices.indexOfFirst { it.id == id && it.photo === pending }
+        if (index < 0) return null
+        val photo = NoticePolicy.photoFromBytes(bytes)
+        notices[index] = notices[index].copy(photo = photo)
+        return photo
     }
     fun clear() { notices.clear() }
 }

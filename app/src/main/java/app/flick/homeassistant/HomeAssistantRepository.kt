@@ -130,16 +130,6 @@ class HomeAssistantRepository(context: Context, scope: CoroutineScope) {
         }
     }
 
-    /** Import can check credentials before changing any other feature's settings. No writes occur. */
-    suspend fun validateConfiguration(url: String, token: String) = withContext(Dispatchers.IO) {
-        ready()
-        if (url.isBlank() && token.isBlank()) return@withContext
-        val address = HaPolicy.canonicalUrl(url)
-        val secret = token.trim().ifEmpty { credentials?.takeIf { it.url == address }?.token.orEmpty() }
-        if (!HaPolicy.validToken(secret)) throw HaException("Enter a Home Assistant access token")
-        validateApi(HaCredentials(address, secret))
-    }
-
     suspend fun discover(): List<HaEntity> = discoverEntities(HaPolicy::domain)
 
     suspend fun discoverDisplayPlayers(): List<HaEntity> = discoverEntities({ id ->
@@ -169,20 +159,35 @@ class HomeAssistantRepository(context: Context, scope: CoroutineScope) {
         }.distinctBy { it.entityId }.sortedWith(compareBy({ it.domain }, { it.name.lowercase() }))
     }
 
-    suspend fun saveControls(values: List<HaControlSpec>) = withContext(Dispatchers.IO) {
+    suspend fun setControlEnabled(control: HaControlSpec, enabled: Boolean) {
         ready()
-        val selected = HaPolicy.controls(values)
         settingsLock.withLock {
-            try { store.saveControls(selected) } catch (_: Exception) { throw HaException("The controls could not be saved") }
-            synchronized(this@HomeAssistantRepository) {
-                actions.keys.forEach { it.cancel() }
-                generation.incrementAndGet()
-                val previous = controls.value.associateBy { it.id }
-                mutableConfiguration.value = configuration.value.copy(controls = selected)
-                mutableControls.value = selected.map { spec -> previous[spec.entityId]?.copy(name = spec.name, pending = false, requestedOn = null) ?: initial(spec) }
+            withContext(Dispatchers.IO) {
+                val connection = requireCredentials()
+                val current = configuration.value
+                val selected = changeControlSelection(current.controls, control, enabled)
+                if (selected == current.controls) return@withContext
+                try { store.saveControls(selected) } catch (_: Exception) { throw HaException("The controls could not be saved") }
+                val updated = current.copy(controls = selected)
+                val restart = current.observedEntityIds.isEmpty() != updated.observedEntityIds.isEmpty()
+                synchronized(this@HomeAssistantRepository) {
+                    if (!enabled) actions.forEach { (job, entityId) -> if (entityId == control.entityId) job.cancel() }
+                    advance(control.entityId)
+                    if (restart) generation.incrementAndGet()
+                    val previous = controls.value.associateBy { it.id }
+                    mutableConfiguration.value = updated
+                    mutableControls.value = selected.map { spec ->
+                        previous[spec.entityId] ?: initial(spec)
+                    }
+                }
+                if (restart) restartSession(keepHttp = true)
+                else if (enabled) {
+                    val added = selected.first { it.entityId == control.entityId }
+                    val epoch = generation.get()
+                    worker.launch { reads.withPermit { readOne(connection, added, epoch) } }
+                }
             }
         }
-        restartSession(keepHttp = true)
     }
 
     suspend fun saveDisplayPowerEntity(value: HaControlSpec?) = withContext(Dispatchers.IO) {
@@ -190,6 +195,7 @@ class HomeAssistantRepository(context: Context, scope: CoroutineScope) {
         val selected = HaDisplayPowerPolicy.selection(value)
         settingsLock.withLock {
             requireCredentials()
+            if (selected == configuration.value.displayPowerEntity) return@withContext
             try { store.saveDisplayPowerEntity(selected) } catch (_: Exception) {
                 throw HaException("The physical TV selection could not be saved")
             }
@@ -215,6 +221,14 @@ class HomeAssistantRepository(context: Context, scope: CoroutineScope) {
             }
             restartSession()
         }
+    }
+
+    internal suspend fun cameraStream(camera: String): String {
+        ready()
+        val (connection, epoch) = snapshot()
+        val stream = requestCameraStream(client, connection, camera)
+        if (epoch != generation.get()) throw HaException("Home Assistant changed")
+        return stream
     }
 
     suspend fun refresh() = withContext(Dispatchers.IO) {
@@ -351,13 +365,13 @@ class HomeAssistantRepository(context: Context, scope: CoroutineScope) {
             return
         }
         val epoch = generation.get()
-        val observedIds = configuration.value.observedEntityIds()
+        val hasObservedEntities = configuration.value.observedEntityIds.isNotEmpty()
         val httpConfirmed = authenticatedHttp || (keepHttp && health.httpAvailable)
         health = HaConnectionHealth(httpAvailable = httpConfirmed)
         mutableConnectionState.value = health.state
         session = worker.launch {
-            val events = if (observedIds.isNotEmpty()) HaEventStream(eventsClient, this, connection,
-                selected = { observedIds },
+            val events = if (hasObservedEntities) HaEventStream(eventsClient, this, connection,
+                selected = { configuration.value.observedEntityIds },
                 observed = { id, value -> observed(id, value, epoch) },
                 ready = {
                     reportEvents(epoch, available = true)

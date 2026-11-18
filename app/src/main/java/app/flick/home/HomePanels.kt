@@ -47,7 +47,7 @@ internal fun HomePanels(panel: HomePanel?, state: HomeState, actions: HomeAction
             actions.setProfileWallpaper,
             onBack = { onPanel(HomePanel.ManageProfiles) })
         HomePanel.HomeAssistantControls -> HomeAssistantControlsPanel(state.homeControls, state.haConnectionState,
-            actions.setHomePower, actions.runHomeScene, actions.retryHomeAssistant,
+            actions.setHomePower, actions.runHomeScene, actions.openHomeCamera, actions.retryHomeAssistant,
             onChooseControls = { actions.discoverHomeEntities(); onPanel(HomePanel.HomeEntities(fromControls = true)) },
             onBack = onClose)
         HomePanel.Weather -> WeatherLocationPanel(state.settings.weatherLocation, state.places, state.searchingPlaces,
@@ -69,7 +69,7 @@ internal fun HomePanels(panel: HomePanel?, state: HomeState, actions: HomeAction
         HomePanel.Updates -> UpdatePanel(state.update, actions.checkUpdates, actions.downloadUpdate,
             actions.installUpdate, actions.cancelUpdate, onClose = { actions.cancelUpdate(); onPanel(HomePanel.Settings) })
         is HomePanel.HomeEntities -> HomeEntityPicker(state.haEntities, state.haConfiguration.controls, state.haBusy,
-            state.haDiscoveryLoaded, actions.saveHomeControls, actions.showMessage,
+            state.haDiscoveryLoaded, actions.setHomeControl, actions.discoverHomeEntities, actions.showMessage,
             onBack = { onPanel(if (panel.fromControls) HomePanel.HomeAssistantControls else HomePanel.HomeAssistantSetup) })
         else -> Unit
     }

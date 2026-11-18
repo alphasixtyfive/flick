@@ -27,7 +27,7 @@
             <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="User-enabled Home Assistant connection for TV notifications over other apps." />
         </service>
-        <activity android:name=".MainActivity" android:exported="true" android:launchMode="singleTask"
+        <activity android:name=".MainActivity" android:label="@string/app_name" android:exported="true" android:launchMode="singleTask"
             android:screenOrientation="landscape" android:excludeFromRecents="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

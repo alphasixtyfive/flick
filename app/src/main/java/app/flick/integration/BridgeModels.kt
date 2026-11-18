@@ -10,7 +10,7 @@ enum class BridgeConnection(val label: String) {
 
 data class BridgeState(
     val deviceId: String = "",
-    val name: String = "Flick TV",
+    val name: String = "Flick",
     val enabled: Boolean = false,
     val notificationsEnabled: Boolean = true,
     val allowManagement: Boolean = false,
@@ -28,7 +28,7 @@ enum class BridgeCommandType(val wireName: String) {
     SetTheme("set_theme"),
     SetProfile("set_profile"), DeleteProfile("delete_profile"), SelectProfile("select_profile"),
     NextWallpaper("next_wallpaper"), SetWallpaperOptions("set_wallpaper_options"),
-    SetWallpapers("set_wallpapers"), Notify("notify"),
+    SetWallpapers("set_wallpapers"), Notify("notify"), OpenCamera("open_camera"),
 }
 
 class BridgeCommand(val requestId: String, val type: BridgeCommandType, val data: JSONObject,

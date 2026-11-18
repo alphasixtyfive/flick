@@ -3,6 +3,7 @@ package app.flick.integration
 import java.net.URI
 import org.json.JSONArray
 import org.json.JSONObject
+import app.flick.homeassistant.HaCamera
 import app.flick.json.JsonStructure
 
 /** Limits apply before a JSON library can recurse or allocate large collections. */
@@ -63,6 +64,11 @@ object BridgeProtocol {
                 keys(data, setOf("photos", "replace"))
                 strings(data, "photos", 500).forEach(::httpUrl)
                 if (data.has("replace")) boolean(data, "replace")
+            }
+            BridgeCommandType.OpenCamera -> {
+                keys(data, setOf("camera_entity_id", "title"))
+                require(HaCamera.isEntity(string(data, "camera_entity_id", 135))) { "Choose a camera entity" }
+                if (data.has("title")) string(data, "title", 100)
             }
             BridgeCommandType.Notify -> {
                 keys(data, setOf("id", "title", "message", "image", "actions", "persistent", "timeout"))

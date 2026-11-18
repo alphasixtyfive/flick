@@ -10,7 +10,7 @@ import org.junit.Test
 
 class HomeTextSetupTest {
     @Test fun setupLinkPreservesTheConfiguredServerAndProxyPath() {
-        assertEquals("https://ha.example.test/proxy/config/integrations/integration/flick_tv",
+        assertEquals("https://ha.example.test/proxy/config/integrations/integration/flick",
             HomeTextSetup.integrationUrl(" https://ha.example.test/proxy/ "))
     }
 

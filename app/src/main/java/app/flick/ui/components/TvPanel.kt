@@ -42,11 +42,12 @@ fun TvPanel(
     title: String,
     onBack: () -> Unit,
     focusKey: Any = title,
+    preferredFocus: FocusRequester? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val scroll = rememberScrollState()
     LaunchedEffect(title) { scroll.scrollTo(0) }
-    PanelShell(title, onBack, focusKey) {
+    PanelShell(title, onBack, focusKey, preferredFocus) {
         Column(
             Modifier.fillMaxWidth().weight(1f).verticalScroll(scroll).padding(TvLayout.PanelContentPadding),
             verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -81,6 +82,7 @@ private fun PanelShell(
     title: String,
     onBack: () -> Unit,
     focusKey: Any,
+    preferredFocus: FocusRequester? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val initialFocus = remember { FocusRequester() }
@@ -90,7 +92,8 @@ private fun PanelShell(
     LaunchedEffect(title, focusKey, windowFocused, focusPending) {
         if (windowFocused && focusPending) {
             withFrameNanos { }
-            runCatching { initialFocus.requestFocus() }
+            val restored = preferredFocus != null && runCatching { preferredFocus.requestFocus() }.isSuccess
+            if (!restored) runCatching { initialFocus.requestFocus() }
             focusPending = false
         }
     }

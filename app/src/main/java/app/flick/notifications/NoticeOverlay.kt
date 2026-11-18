@@ -8,11 +8,14 @@ import android.graphics.PixelFormat
 import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.StateListDrawable
 import android.text.TextUtils
+import android.view.accessibility.AccessibilityNodeInfo
 import android.view.Gravity
 import android.view.KeyEvent
 import android.view.View
 import android.view.ViewGroup
 import android.view.WindowManager
+import android.widget.Button
+import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -30,6 +33,7 @@ internal class NoticeOverlay(private val context: Context, private val onNavigat
     private var root: View? = null
     private var image: ImageView? = null
     private var bitmap: Bitmap? = null
+    private var photoStatus: TextView? = null
 
     fun show(notice: TvNotice, picture: Bitmap?, onDismiss: () -> Unit, onAction: (NoticeAction) -> Unit) {
         dismiss()
@@ -52,16 +56,19 @@ internal class NoticeOverlay(private val context: Context, private val onNavigat
             accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_POLITE
         }
         val width = minOf(dp(340), context.resources.displayMetrics.widthPixels - dp(64)).coerceAtLeast(dp(200))
-        image = ImageView(context).apply {
-            scaleType = ImageView.ScaleType.FIT_CENTER
-            contentDescription = null
-            clipToOutline = true
-            background = shape(surface, 12)
-            visibility = View.GONE
+        if (notice.photo != NoticePhoto.None) {
+            val photo = FrameLayout(context).apply {
+                background = shape(Color.rgb(18, 26, 36), 12)
+                clipToOutline = true
+            }
+            image = ImageView(context).apply { scaleType = ImageView.ScaleType.FIT_CENTER }
+            photo.addView(image, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+            photoStatus = text(if (notice.photo is NoticePhoto.Loading) "Loading photo…" else "Photo unavailable", 13f, secondary, 1)
+            photo.addView(photoStatus, FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.CENTER))
+            card.addView(photo, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (width - dp(36)) * 9 / 16).apply {
+                bottomMargin = dp(12)
+            })
         }
-        card.addView(image, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (width - dp(36)) * 9 / 16).apply {
-            bottomMargin = dp(12)
-        })
         if (notice.title.isNotEmpty()) card.addView(text(notice.title, 18f, foreground, 2))
         if (notice.message.isNotEmpty()) card.addView(text(notice.message, 14f, secondary, 4), LinearLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT,
@@ -69,15 +76,16 @@ internal class NoticeOverlay(private val context: Context, private val onNavigat
         var dismissButton: View? = null
         if (notice.interactive) {
             val buttons = LinearLayout(context).apply { orientation = LinearLayout.HORIZONTAL }
-            fun addButton(label: String, click: () -> Unit): View {
-                val button = button(label, click)
+            val hasCamera = notice.actions.any { it.camera != null }
+            fun addButton(label: String, camera: Boolean = false, click: () -> Unit): View {
+                val button = button(label, if (hasCamera) 22 else 12, camera, click)
                 buttons.addView(button, LinearLayout.LayoutParams(0, dp(44), 1f).apply {
                     if (buttons.childCount > 0) marginStart = dp(8)
                 })
                 return button
             }
-            dismissButton = addButton("Dismiss", onDismiss)
-            notice.actions.forEach { action -> addButton(action.label) { onAction(action) } }
+            dismissButton = addButton("Dismiss", click = onDismiss)
+            notice.actions.forEach { action -> addButton(action.label, camera = action.camera != null) { onAction(action) } }
             card.addView(buttons, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(44)).apply { topMargin = dp(14) })
         }
         val flags = WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
@@ -93,8 +101,8 @@ internal class NoticeOverlay(private val context: Context, private val onNavigat
         }
         root = card
         try {
-            windows.addView(card, layout)
             if (picture != null) updateImage(picture)
+            windows.addView(card, layout)
             dismissButton?.let { button -> button.post { if (root === card) button.requestFocus() } }
         } catch (failure: RuntimeException) {
             dismiss()
@@ -102,10 +110,13 @@ internal class NoticeOverlay(private val context: Context, private val onNavigat
         }
     }
 
-    fun updateImage(picture: Bitmap) {
-        val target = image ?: run { picture.recycle(); return }
+    fun updateImage(picture: Bitmap?) {
+        val target = image ?: run { picture?.recycle(); return }
         target.setImageBitmap(picture)
-        target.visibility = View.VISIBLE
+        photoStatus?.let { status ->
+            status.text = "Photo unavailable"
+            status.visibility = if (picture == null) View.VISIBLE else View.GONE
+        }
         bitmap?.recycle()
         bitmap = picture
     }
@@ -115,6 +126,7 @@ internal class NoticeOverlay(private val context: Context, private val onNavigat
         root = null
         image?.setImageDrawable(null)
         image = null
+        photoStatus = null
         bitmap?.recycle()
         bitmap = null
     }
@@ -129,23 +141,44 @@ internal class NoticeOverlay(private val context: Context, private val onNavigat
         includeFontPadding = false
     }
 
-    private fun button(label: String, click: () -> Unit) = text(label, 13f, foreground, 2).apply {
-        gravity = Gravity.CENTER
-        setPadding(dp(6), 0, dp(6), 0)
-        isFocusable = true
-        isFocusableInTouchMode = true
-        isClickable = true
-        isSoundEffectsEnabled = false
-        background = StateListDrawable().apply {
-            addState(intArrayOf(android.R.attr.state_focused), shape(this@NoticeOverlay.foreground, 12))
-            addState(intArrayOf(android.R.attr.state_pressed), shape(this@NoticeOverlay.foreground, 12))
-            addState(intArrayOf(), shape(Color.rgb(37, 47, 61), 12))
+    private fun button(label: String, radius: Int, camera: Boolean, click: () -> Unit): View {
+        val states = arrayOf(intArrayOf(android.R.attr.state_focused), intArrayOf(android.R.attr.state_pressed), intArrayOf())
+        val textColor = foreground
+        val colors = ColorStateList(states, intArrayOf(surface, surface, textColor))
+        return LinearLayout(context).apply {
+            gravity = Gravity.CENTER
+            val padding = dp(if (camera) 12 else 6)
+            setPadding(padding, 0, padding, 0)
+            isFocusable = true
+            isFocusableInTouchMode = true
+            isClickable = true
+            isSoundEffectsEnabled = false
+            background = StateListDrawable().apply {
+                addState(states[0], shape(textColor, radius))
+                addState(states[1], shape(textColor, radius))
+                addState(states[2], shape(Color.rgb(37, 47, 61), radius))
+            }
+            accessibilityDelegate = object : View.AccessibilityDelegate() {
+                override fun onInitializeAccessibilityNodeInfo(host: View, info: AccessibilityNodeInfo) {
+                    super.onInitializeAccessibilityNodeInfo(host, info)
+                    info.className = Button::class.java.name
+                    info.text = label
+                }
+            }
+            if (camera) addView(ImageView(context).apply {
+                setImageResource(R.drawable.ic_notice_camera)
+                imageTintList = colors
+                isDuplicateParentStateEnabled = true
+                importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+            }, LinearLayout.LayoutParams(dp(18), dp(18)).apply { marginEnd = dp(8) })
+            addView(text(label, 13f, textColor, 2).apply {
+                setTextColor(colors)
+                gravity = Gravity.CENTER
+                isDuplicateParentStateEnabled = true
+                importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+            })
+            setOnClickListener { click() }
         }
-        setTextColor(ColorStateList(
-            arrayOf(intArrayOf(android.R.attr.state_focused), intArrayOf(android.R.attr.state_pressed), intArrayOf()),
-            intArrayOf(surface, surface, this@NoticeOverlay.foreground),
-        ))
-        setOnClickListener { click() }
     }
 
     private fun shape(color: Int, radius: Int) = GradientDrawable().apply {

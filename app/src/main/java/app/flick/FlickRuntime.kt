@@ -7,6 +7,7 @@ import android.content.IntentFilter
 import android.os.Build
 import android.os.PowerManager
 import app.flick.apps.AndroidCatalogue
+import app.flick.homeassistant.HaDisplayPower
 import app.flick.homeassistant.HomeAssistantRepository
 import app.flick.integration.BridgeCommand
 import app.flick.integration.FlickBridgeClient
@@ -59,7 +60,10 @@ class FlickRuntime(context: Context) {
     private val power = context.getSystemService(PowerManager::class.java)
     private val commands = LauncherCommands(this)
     val notifications = NotificationController(context, scope,
-        onNavigationFeedback = { navigationSounds.play(store.state.value.navigationSound) }) { action ->
+        onNavigationFeedback = { navigationSounds.play(store.state.value.navigationSound) },
+        cameraStream = { camera -> withAdultSession { homeAssistant.cameraStream(camera) } },
+        canOpenCamera = { canManage() && power.isInteractive && homeAssistant.displayPower.value != HaDisplayPower.Off },
+    ) { action ->
         if (canManage()) scope.launch {
             runCatching { withAdultSession { bridge.notificationAction(action.noticeId, action.actionId) } }
         }
@@ -71,7 +75,10 @@ class FlickRuntime(context: Context) {
     init {
         val screenOff = object : BroadcastReceiver() {
             override fun onReceive(context: Context, intent: Intent) {
-                if (intent.action == Intent.ACTION_SCREEN_OFF) revokeProfileSession()
+                if (intent.action == Intent.ACTION_SCREEN_OFF) {
+                    notifications.closeCamera()
+                    revokeProfileSession()
+                }
             }
         }
         // This receiver has the same lifetime as the process-owned session, including while an app plays.
@@ -89,7 +96,12 @@ class FlickRuntime(context: Context) {
                 }
             }.distinctUntilChanged().collect(bridge::setHomeTextProfile)
         }
-        scope.launch { homeAssistant.displayPowerInterruptions.drop(1).collect { revokeProfileSession() } }
+        scope.launch {
+            homeAssistant.displayPowerInterruptions.drop(1).collect {
+                notifications.closeCamera()
+                revokeProfileSession()
+            }
+        }
         scope.launch {
             homeAssistant.credentialRevision.drop(1).collect {
                 runCatching { bridge.reconnect() }
@@ -97,7 +109,7 @@ class FlickRuntime(context: Context) {
         }
         scope.launch {
             bridge.state.filter { it.deviceId.isNotEmpty() }.map { it.enabled && it.notificationsEnabled }.distinctUntilChanged().collect { enabled ->
-                if (!enabled) notifications.dismissAll()
+                if (!enabled) notifications.dismissNotifications()
             }
         }
         scope.launch {
@@ -125,7 +137,7 @@ class FlickRuntime(context: Context) {
     }
 
     fun onBackgroundServiceStarted() { scope.launch { runCatching { bridge.reconnect() } } }
-    fun onBackgroundServiceStopped() { notifications.dismissAll() }
+    fun onBackgroundServiceStopped() { notifications.dismissNotifications() }
 
     /** Call from a visible activity: Android restricts starting services from the background. */
     fun resume() {
@@ -136,6 +148,7 @@ class FlickRuntime(context: Context) {
     }
     fun pause() { visible = false }
 
+    internal fun isScreenOn() = power.isInteractive
     internal fun canManage() = !store.requiresRecovery.value && profileSession.canManage(store.state.value)
     internal fun canLaunch(packageName: String) = !store.requiresRecovery.value && profileSession.canLaunch(store.state.value, packageName)
 

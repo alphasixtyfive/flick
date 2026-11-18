@@ -24,9 +24,8 @@ android {
         applicationId = "app.flick"
         minSdk = 26
         targetSdk = 35
-        versionCode = 230
-        versionName = "0.2.30"
-        resValue("string", "app_name", "Flick")
+        versionCode = 231
+        versionName = "0.2.31"
     }
     buildFeatures { compose = true; buildConfig = true }
     signingConfigs {
@@ -65,6 +64,9 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
     implementation("io.coil-kt:coil-compose:2.7.0")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation("androidx.media3:media3-exoplayer:1.6.1")
+    implementation("androidx.media3:media3-exoplayer-hls:1.6.1")
+    implementation("androidx.media3:media3-datasource-okhttp:1.6.1")
     implementation("com.google.zxing:core:3.5.4")
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.json:json:20240303")

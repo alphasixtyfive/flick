@@ -7,7 +7,7 @@ import com.google.zxing.qrcode.QRCodeWriter
 internal object HomeTextSetup {
     const val QR_SIZE = 320
     fun integrationUrl(address: String): String =
-        HaPolicy.canonicalUrl(address) + "/config/integrations/integration/flick_tv"
+        HaPolicy.canonicalUrl(address) + "/config/integrations/integration/flick"
 
     /** Generated locally; the setup link contains no token or pairing secret. */
     fun qrPixels(url: String): IntArray {

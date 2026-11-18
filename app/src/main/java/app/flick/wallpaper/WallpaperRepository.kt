@@ -10,7 +10,6 @@ import java.util.concurrent.ArrayBlockingQueue
 import java.util.concurrent.FutureTask
 import java.util.concurrent.ThreadPoolExecutor
 import java.util.concurrent.TimeUnit
-import java.util.concurrent.atomic.AtomicLong
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlinx.coroutines.CancellationException
@@ -55,7 +54,6 @@ class WallpaperRepository(context: Context, scope: CoroutineScope) {
     private var available = emptyList<WallpaperPhoto>()
     private var folderCache = emptyList<WallpaperPhoto>()
     private var folderRefresh: Job? = null
-    private val saves = AtomicLong()
     private val provider = ThreadPoolExecutor(1, 1, 30, TimeUnit.SECONDS, ArrayBlockingQueue<Runnable>(1)) { task ->
         Thread(task, "Flick photo folder").apply { isDaemon = true }
     }.apply { allowCoreThreadTimeOut(true) }
@@ -70,7 +68,6 @@ class WallpaperRepository(context: Context, scope: CoroutineScope) {
         loaded.await()
         folderRefresh?.cancelAndJoin()
         changes.withLock {
-            saves.incrementAndGet()
             val clean = validate(value)
             persist(clean, if (clean.folderUri == settings.value.folderUri) folderCache else emptyList())
         }
@@ -80,7 +77,6 @@ class WallpaperRepository(context: Context, scope: CoroutineScope) {
         loaded.await()
         folderRefresh?.cancelAndJoin()
         changes.withLock {
-            saves.incrementAndGet()
             withContext(Dispatchers.IO) {
                 val value = readSettings()
                 folderCache = readFolderSnapshot(value.folderUri)
@@ -110,33 +106,6 @@ class WallpaperRepository(context: Context, scope: CoroutineScope) {
         }
     }
 
-    /** Check imported values and folder access without changing any preferences or published state. */
-    suspend fun validateForImport(settings: WallpaperSettings): WallpaperSettings = withContext(Dispatchers.IO) {
-        val validated = validate(settings)
-        validated.folderUri?.let { scanFolder(it) }
-        validated
-    }
-
-    /** Invalid input or an inaccessible newly selected folder leaves the last saved state intact. */
-    suspend fun save(settings: WallpaperSettings) {
-        val generation = saves.incrementAndGet()
-        loaded.await()
-        val validated = withContext(Dispatchers.Default) { validate(settings) }
-        val cached = changes.withLock {
-            folderCache.takeIf { validated.folderUri == this.settings.value.folderUri }
-        }
-        val folder = when {
-            validated.folderUri == null -> emptyList()
-            cached != null -> cached
-            else -> scanFolder(validated.folderUri)
-        }
-        changes.withLock {
-            if (generation != saves.get()) throw CancellationException("Wallpaper change superseded")
-            currentCoroutineContext().ensureActive()
-            persist(validated, folder)
-        }
-    }
-
     /** Remote edits use the latest restored selection and cannot replace document grants. */
     suspend fun updateOnlineSelection(transform: (WallpaperSettings) -> WallpaperSettings) {
         loaded.await()
@@ -144,7 +113,6 @@ class WallpaperRepository(context: Context, scope: CoroutineScope) {
             val latest = settings.value
             val updated = validate(transform(latest))
             require(updated.folderUri == latest.folderUri) { "Choose photo folders on the TV" }
-            saves.incrementAndGet()
             persist(updated, folderCache)
         }
     }
@@ -155,7 +123,6 @@ class WallpaperRepository(context: Context, scope: CoroutineScope) {
             val latest = settings.value
             val merged = validate(mergeWallpaperChanges(latest, before, requested))
             require(merged.folderUri == latest.folderUri || merged.folderUri == null) { "Choose photo folders using Android's folder picker" }
-            saves.incrementAndGet()
             persist(merged, if (merged.folderUri == null) emptyList() else folderCache)
         }
     }
@@ -173,7 +140,6 @@ class WallpaperRepository(context: Context, scope: CoroutineScope) {
                 currentCoroutineContext().ensureActive()
                 val latest = settings.value
                 val merged = validate(latest.copy(photos = mergeSelectedPhotos(latest.photos, selected)))
-                saves.incrementAndGet()
                 persist(merged, folderCache)
             }
         } catch (failure: Exception) {
@@ -192,7 +158,6 @@ class WallpaperRepository(context: Context, scope: CoroutineScope) {
             changes.withLock {
                 currentCoroutineContext().ensureActive()
                 val merged = validate(settings.value.copy(folderUri = uri))
-                saves.incrementAndGet()
                 persist(merged, photos)
             }
         } catch (failure: Exception) {

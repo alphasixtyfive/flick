@@ -5,7 +5,7 @@ import org.junit.Test
 
 class HaPolicyTest {
     @Test fun onlyExplicitSupportedEntityDomainsCanBeSelected() {
-        for (entity in listOf("light.example", "switch.example", "input_boolean.example", "scene.example", "script.example", "sensor.example", "binary_sensor.example")) {
+        for (entity in listOf("light.example", "switch.example", "input_boolean.example", "scene.example", "script.example", "sensor.example", "binary_sensor.example", "camera.example")) {
             assertNotNull(HaPolicy.domain(entity))
         }
         for (entity in listOf("lock.front_door", "cover.gate", "alarm_control_panel.house", "light.example/../secret", "light.example?token=secret", "light.example\n")) {

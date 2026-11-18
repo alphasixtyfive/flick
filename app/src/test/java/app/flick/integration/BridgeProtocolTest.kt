@@ -23,6 +23,14 @@ class BridgeProtocolTest {
         rejected { BridgeProtocol.event(command().put("request_id", 42)) }
     }
 
+    @Test fun directCameraRequestsOnlyAcceptCameraEntities() {
+        val camera = JSONObject().put("camera_entity_id", "camera.entry").put("title", "Entry")
+        assertEquals(BridgeCommandType.OpenCamera, (BridgeProtocol.event(command("open_camera", camera)) as BridgeEvent.Command).value.type)
+        rejected { BridgeProtocol.event(command("open_camera", JSONObject().put("camera_entity_id", "switch.entry"))) }
+        rejected { BridgeProtocol.event(command("open_camera", JSONObject().put("camera_entity_id", "https://example.test/stream"))) }
+        rejected { BridgeProtocol.event(command("open_camera", camera.put("url", "https://example.test/stream"))) }
+    }
+
     @Test fun rejectsUnknownVersionCommandAndFields() {
         rejected { BridgeProtocol.event(command(version = 2)) }
         rejected { BridgeProtocol.event(command("execute_shell")) }

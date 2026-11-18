@@ -1,6 +1,7 @@
 package app.flick
 
 import app.flick.home.HomePolicy
+import app.flick.homeassistant.HaCamera
 import app.flick.integration.BridgeCommand
 import app.flick.integration.BridgeCommandType
 import app.flick.integration.BridgeCommandException
@@ -30,7 +31,10 @@ internal class LauncherCommands(private val runtime: FlickRuntime) {
             .put("profile", publicProfile(profile, details = false)).put("profiles", publicProfiles(details = false))
             .put("capabilities", JSONArray(buildList {
                 add("profiles"); add("wallpapers"); add("themes"); add("home_text")
-                if (runtime.notifications.state.value.overlayAllowed) add("notifications")
+                if (runtime.notifications.state.value.overlayAllowed) {
+                    add("notifications")
+                    add("camera_view")
+                }
             }))
     }
 
@@ -48,6 +52,12 @@ internal class LauncherCommands(private val runtime: FlickRuntime) {
         }
         check(bridge.allowManagement) { "Allow launcher management in Flick settings first" }
         return runtime.withAdultSession { when (command.type) {
+            BridgeCommandType.OpenCamera -> {
+                if (!runtime.isScreenOn() || !runtime.notifications.showCamera(
+                    command.data.optString("title", "Camera"), command.data.getString("camera_entity_id"),
+                )) throw BridgeCommandException("permission_required")
+                JSONObject()
+            }
             BridgeCommandType.ListApps -> JSONObject().put("apps", JSONArray(runtime.catalogue.apps().map {
                 JSONObject().put("package_name", it.packageName).put("name", it.name)
             }))
@@ -127,24 +137,32 @@ internal class LauncherCommands(private val runtime: FlickRuntime) {
         return status()
     }
 
-    private suspend fun showNotice(data: JSONObject) {
+    private fun showNotice(data: JSONObject) {
+        val raw = data.optString("image").takeIf { it.isNotBlank() }
+        val origin = runtime.homeAssistant.configuration.value.url
+        val snapshot = HaCamera.snapshot(origin, raw)
         val actions = if (runtime.canManage()) data.optJSONArray("actions")?.let { array ->
-            (0 until array.length()).map { index -> array.getJSONObject(index).let { NoticeAction(it.getString("id"), it.getString("label")) } }
+            (0 until array.length()).mapNotNull { index ->
+                val action = array.getJSONObject(index)
+                val id = action.getString("id")
+                val camera = if (id == HaCamera.ViewAction) snapshot?.entityId ?: return@mapNotNull null else null
+                NoticeAction(id, action.getString("label"), camera = camera)
+            }
         }.orEmpty() else emptyList()
         val persistent = data.optBoolean("persistent", false)
         val seconds = data.optInt("timeout", 8)
+        val uri = snapshot?.url ?: raw?.let { image ->
+            runCatching {
+                val base = URI(origin)
+                val candidate = URI(image)
+                val resolved = if (candidate.isAbsolute) candidate else base.resolve(candidate)
+                resolved.toString().takeIf { resolved.scheme in setOf("http", "https") && resolved.host != null && resolved.rawUserInfo == null }
+            }.getOrNull()
+        }
         val notice = TvNotice(id = data.getString("id"), title = data.optString("title"), message = data.optString("message"),
             actions = actions, persistent = persistent, timeoutMillis = if (seconds == 0) 8_000L else seconds * 1000L,
             interactive = persistent || actions.isNotEmpty())
-        runtime.notifications.post(notice)
-        val raw = data.optString("image").takeIf { it.isNotBlank() } ?: return
-        val uri = runCatching {
-            val base = URI(runtime.homeAssistant.configuration.value.url)
-            val candidate = URI(raw)
-            val resolved = if (candidate.isAbsolute) candidate else base.resolve(candidate)
-            resolved.toString().takeIf { resolved.scheme in setOf("http", "https") && resolved.host != null && resolved.rawUserInfo == null }
-        }.getOrNull() ?: return
-        runtime.notifications.loadNoticeImage(uri)?.let { runtime.notifications.updateImage(notice.id, it) }
+        runtime.notifications.post(notice, imageUrl = uri)
     }
 
     private fun publicThemes(): JSONObject {

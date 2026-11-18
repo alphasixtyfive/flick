@@ -9,10 +9,10 @@ data class HaConfiguration(
     val configured: Boolean = false,
     val controls: List<HaControlSpec> = emptyList(),
     val displayPowerEntity: HaControlSpec? = null,
-)
-
-internal fun HaConfiguration.observedEntityIds(): Set<String> =
-    controls.mapTo(mutableSetOf()) { it.entityId }.apply { displayPowerEntity?.let { add(it.entityId) } }
+) {
+    internal val observedEntityIds: Set<String> =
+        controls.mapTo(mutableSetOf()) { it.entityId }.apply { displayPowerEntity?.let { add(it.entityId) } }
+}
 
 /** Reported state stays separate from the target of an in-flight request. */
 data class HaControl(

@@ -124,20 +124,26 @@ camera images, notification buttons and a dashboard card.
 Create a dedicated non-admin Home Assistant user. Sign in as that user and create a long-lived access
 token under its profile → Security. Enter the server address and token in Settings → Home Assistant,
 then choose up to sixteen controls. Saved tokens are encrypted on the device and are not shown again.
+Choose a group to browse its controls alphabetically, or open Selected to review your choices.
+Switch a row on to show the control in the sidebar, or off to remove it. Changes save immediately.
 
-Flick supports lights, switches, toggle helpers (`input_boolean`), scenes/scripts and read-only sensors/binary
-sensors. Locks, alarms and gate controls are excluded. Switches respond to a press while Home Assistant
+Flick supports lights, switches, toggle helpers (`input_boolean`), scenes, scripts, read-only sensors and cameras.
+Locks, alarms and gate controls are excluded. Switches respond to a press while Home Assistant
 confirms the change. Slower requests show a small spinner in the switch; a failed request returns it to
 the reported state and shows an error. Scenes run directly. If the server is offline, use Retry in
 Home Assistant settings.
 
+Add a camera under Settings → Home Assistant → Controls → Cameras, then select it in the Home Assistant
+sidebar to watch its live video. Press Back to return to the sidebar. Camera playback from the sidebar
+uses Home Assistant's HLS stream and works without pairing or Android's Display over other apps permission.
+
 ### TV connection
 
-Install the optional [Flick TV component](https://github.com/alphasixtyfive/flick-home-assistant)
+Install the optional [Flick integration](https://github.com/alphasixtyfive/flick-home-assistant)
 in Home Assistant for notifications and launcher management. Ordinary light controls work without it.
 
 1. On the TV, open Settings → Home Assistant → TV connection → Pair TV.
-2. In an administrator's Home Assistant session, open Settings → Devices & services → Add integration → Flick TV.
+2. In an administrator's Home Assistant session, open Settings → Devices & services → Add integration → Flick.
 3. Enter the TV's six-digit code and confirm its name. The code expires after five minutes.
 
 Pairing uses the existing non-admin TV account and an outbound WebSocket connection.
@@ -162,7 +168,7 @@ removes pairing. Ordinary light controls stay configured.
 ### Home screen text
 
 1. Pair the TV, then enable Settings → Home Assistant → Home screen text on Flick.
-2. In Home Assistant, open Settings → Devices & services → Flick TV → Configure → Home screen text.
+2. In Home Assistant, open Settings → Devices & services → Flick → Configure → Home screen text.
 3. Fill in Message with plain text or a template.
 
 Home Assistant renders the template; Flick displays one plain-text message centred at the top,

@@ -63,7 +63,7 @@ internal fun ClockWeather(clock24: Boolean, showWeather: Boolean, weatherLocatio
     val iconGap = (3 * scale).dp
     val metadataGap = (6 * scale).dp
     val weatherWidth = if (weatherVisible) {
-        val numberWidth = maxOf(textWidth("-88°", metadataStyle), temperature?.let { textWidth(it, metadataStyle) } ?: 0)
+        val numberWidth = textWidth(temperature ?: "-88°", metadataStyle)
         with(density) { numberWidth.toDp() } + iconSize + iconGap
     } else 0.dp
     val dateWidth = blockWidth - if (weatherVisible) weatherWidth + metadataGap else 0.dp
@@ -95,7 +95,7 @@ internal fun ClockWeather(clock24: Boolean, showWeather: Boolean, weatherLocatio
                 maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f, fill = false))
             if (weatherVisible) {
-                // Reserve the weather width before loading, keeping the date still.
+                // Keep the weather space during loading. Once ready, the icon and reading wrap together.
                 Box(Modifier.width(weatherWidth).height(metadataHeight), contentAlignment = Alignment.CenterEnd) {
                     weather?.let { weather ->
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(iconGap)) {

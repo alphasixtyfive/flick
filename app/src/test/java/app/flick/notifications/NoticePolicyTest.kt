@@ -22,17 +22,17 @@ class NoticePolicyTest {
         assertTrue(notice.interactive)
     }
 
-    @Test fun `oversized photos are omitted without losing text`() {
-        val notice = NoticePolicy.sanitize(TvNotice("notice", "Keep this", imageJpeg = ByteArray(NoticePolicy.MaxImageBytes + 1)))!!
-        assertNull(notice.imageJpeg)
+    @Test fun `oversized photos keep the photo slot and the text`() {
+        val notice = NoticePolicy.sanitize(TvNotice("notice", "Keep this", photo = NoticePhoto.Ready(ByteArray(NoticePolicy.MaxImageBytes + 1))))!!
+        assertEquals(NoticePhoto.Unavailable, notice.photo)
         assertEquals("Keep this", notice.title)
     }
 
     @Test fun `photo bytes are owned by the notice after validation`() {
         val source = byteArrayOf(1, 2, 3)
-        val notice = NoticePolicy.sanitize(TvNotice("notice", "Photo", imageJpeg = source))!!
+        val notice = NoticePolicy.sanitize(TvNotice("notice", "Photo", photo = NoticePhoto.Ready(source)))!!
         source[0] = 9
-        assertEquals(1, notice.imageJpeg!![0].toInt())
+        assertEquals(1, (notice.photo as NoticePhoto.Ready).jpeg[0].toInt())
     }
 
     @Test fun `blank and malformed notifications are ignored`() {

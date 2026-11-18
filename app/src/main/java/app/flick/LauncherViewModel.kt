@@ -313,7 +313,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         val entities = homeAssistant.discover()
         mutable.update { it.copy(haEntities = entities, haDiscoveryLoaded = true) }
     } }
-    fun saveHomeControls(controls: List<HaControlSpec>, onComplete: (Result<Unit>) -> Unit) {
+    fun setHomeControl(control: HaControlSpec, enabled: Boolean, onComplete: (Result<Unit>) -> Unit) {
         viewModelScope.launch(Dispatchers.Main.immediate) {
             if (!adult() || switchingProfile) {
                 onComplete(Result.failure(IllegalStateException("Choose an adult profile first")))
@@ -325,17 +325,16 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             }
             val job = currentCoroutineContext().job
             privilegedJobs.add(job)
-            mutable.update { it.copy(haBusy = true) }
             val result = try {
-                homeAssistant.saveControls(controls)
+                homeAssistant.setControlEnabled(control, enabled)
+                mutable.update { it.copy(haConfiguration = homeAssistant.configuration.value) }
                 Result.success(Unit)
             } catch (cancelled: CancellationException) {
-                onComplete(Result.failure(IllegalStateException("Saving was cancelled. Try again.")))
+                onComplete(Result.failure(IllegalStateException("Saving was interrupted. Check your selected controls.")))
                 throw cancelled
             } catch (error: Exception) {
                 Result.failure(error)
             } finally {
-                mutable.update { it.copy(haBusy = false) }
                 privilegedJobs.remove(job)
             }
             onComplete(result)

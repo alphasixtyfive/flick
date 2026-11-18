@@ -33,6 +33,7 @@ fun TvFocusSurface(
     interactionSource: MutableInteractionSource? = null,
     containerColor: Color = FlickColors.Surface,
     focusedScale: Float = 1.04f,
+    enabled: Boolean = true,
     content: @Composable BoxScope.() -> Unit,
 ) {
     val interactions = interactionSource ?: remember { MutableInteractionSource() }
@@ -40,11 +41,14 @@ fun TvFocusSurface(
         // These remain available to accessibility actions. Hardware activation is handled below.
         onClick = onClick,
         onLongClick = onLongClick,
-        modifier = modifier.tvRemoteInput(interactions, onClick, onLongClick),
+        enabled = enabled,
+        modifier = if (enabled) modifier.tvRemoteInput(interactions, onClick, onLongClick) else modifier,
         shape = ClickableSurfaceDefaults.shape(shape),
         colors = ClickableSurfaceDefaults.colors(
             containerColor = containerColor,
             contentColor = FlickColors.Foreground,
+            disabledContainerColor = containerColor,
+            disabledContentColor = FlickColors.Foreground,
             focusedContainerColor = FlickColors.FocusBackground,
             focusedContentColor = FlickColors.FocusForeground,
             pressedContainerColor = FlickColors.FocusBackground,
@@ -66,11 +70,13 @@ fun TvAction(
     icon: ImageVector,
     modifier: Modifier = Modifier,
     onLongClick: (() -> Unit)? = null,
+    enabled: Boolean = true,
     onClick: () -> Unit,
 ) {
     TvFocusSurface(
         onClick = onClick,
         onLongClick = onLongClick,
+        enabled = enabled,
         modifier = modifier.size(TvLayout.TopActionSize).semantics { contentDescription = label },
         shape = CircleShape,
     ) {

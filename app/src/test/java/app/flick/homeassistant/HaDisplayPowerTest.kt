@@ -43,10 +43,10 @@ class HaDisplayPowerTest {
     @Test fun monitoringWorksWithoutAddingAnyActionableControl() {
         val configuration = HaConfiguration(displayPowerEntity = HaControlSpec("media_player.screen", "Screen"))
         assertTrue(configuration.controls.isEmpty())
-        assertEquals(setOf("media_player.screen"), configuration.observedEntityIds())
-        assertTrue(HaConfiguration().observedEntityIds().isEmpty())
+        assertEquals(setOf("media_player.screen"), configuration.observedEntityIds)
+        assertTrue(HaConfiguration().observedEntityIds.isEmpty())
         assertEquals(setOf("media_player.screen", "light.lamp"), configuration.copy(
-            controls = listOf(HaControlSpec("light.lamp", "Lamp"))).observedEntityIds())
+            controls = listOf(HaControlSpec("light.lamp", "Lamp"))).observedEntityIds)
     }
 
     @Test fun onlyExplicitActiveStatesImplyTheTvIsOn() {

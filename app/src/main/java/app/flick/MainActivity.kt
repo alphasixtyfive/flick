@@ -20,6 +20,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import app.flick.home.FlickScreen
 import app.flick.home.HomeActions
+import app.flick.homeassistant.HaCamera
 import app.flick.profiles.Profile
 import app.flick.themes.ThemeCodec
 import app.flick.themes.ThemeDefinition
@@ -108,7 +109,10 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        if (intent.action == Intent.ACTION_MAIN && intent.hasCategory(Intent.CATEGORY_HOME)) model.requestHome()
+        if (intent.action == Intent.ACTION_MAIN && intent.hasCategory(Intent.CATEGORY_HOME)) {
+            runtime.notifications.closeLauncherCamera()
+            model.requestHome()
+        }
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
@@ -127,10 +131,25 @@ class MainActivity : ComponentActivity() {
             runtime.updates.refresh()
         }
     }
-    override fun onPause() { if (::model.isInitialized) { model.setActive(false); runtime.pause() }; super.onPause() }
+    override fun onPause() {
+        if (::model.isInitialized) {
+            runtime.notifications.closeLauncherCamera()
+            model.setActive(false)
+            runtime.pause()
+        }
+        super.onPause()
+    }
 
     private fun openAndroid(intent: Intent) {
         runCatching { startActivity(intent) }.onFailure { model.message("This Android screen is unavailable") }
+    }
+
+    private fun openHomeCamera(entityId: String) {
+        if (!model.canManage() || runtime.switchingProfile || !runtime.isScreenOn() || !HaCamera.isEntity(entityId)) return
+        val camera = runtime.homeAssistant.configuration.value.controls.firstOrNull { it.entityId == entityId } ?: return
+        if (!runtime.notifications.showCamera(camera.name, camera.entityId, activity = this)) {
+            model.message("The camera viewer could not open.")
+        }
     }
 
     private fun createActions() = HomeActions(
@@ -168,6 +187,7 @@ class MainActivity : ComponentActivity() {
         },
         setHomePower = model::setHomePower,
         runHomeScene = model::runHomeScene,
+        openHomeCamera = ::openHomeCamera,
         configureHomeAssistant = model::configureHomeAssistant,
         discoverDisplayPlayers = model::discoverDisplayPlayers,
         saveDisplayPowerEntity = model::saveDisplayPowerEntity,
@@ -187,7 +207,7 @@ class MainActivity : ComponentActivity() {
         setLauncherManagement = model::setLauncherManagement,
         requestOverlayPermission = { if (model.canManage()) openAndroid(runtime.notifications.overlayPermissionIntent()) },
         clearProfileError = model::clearProfileError,
-        saveHomeControls = model::saveHomeControls,
+        setHomeControl = model::setHomeControl,
         openAndroidSettings = { if (model.canManage()) openAndroid(Intent(Settings.ACTION_SETTINGS)) },
         openScreensaverSettings = { if (model.canManage()) openAndroid(Intent(Settings.ACTION_DREAM_SETTINGS)) },
         importTheme = {

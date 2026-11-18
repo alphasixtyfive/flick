@@ -37,7 +37,7 @@ internal fun IntegrationPanel(state: HomeState, actions: HomeActions, onBack: ()
                         val code = bridge.pairingCode
                         if (code != null) {
                             Text(code, style = MaterialTheme.typography.headlineMedium)
-                            IntegrationDetail("In Home Assistant, open Settings → Devices & services → Add integration → Flick TV. Enter this code within five minutes.")
+                            IntegrationDetail("In Home Assistant, open Settings → Devices & services → Add integration → Flick. Enter this code within five minutes.")
                         }
                         TvSettingRow(if (code == null) "Pair TV" else "New pairing code", icon = Icons.Default.Link,
                             onClick = actions.pairHomeAssistant)

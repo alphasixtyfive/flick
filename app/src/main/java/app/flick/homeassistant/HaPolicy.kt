@@ -4,7 +4,7 @@ import java.net.URI
 
 internal object HaPolicy {
     const val maxControls = 16
-    val domains = setOf("light", "switch", "input_boolean", "scene", "script", "sensor", "binary_sensor")
+    private val domains = setOf("light", "switch", "input_boolean", "scene", "script", "sensor", "binary_sensor", "camera")
     val powerDomains = setOf("light", "switch", "input_boolean")
     val actionDomains = setOf("scene", "script")
     private val identifier = Regex("[a-z][a-z0-9_]{0,31}\\.[a-z0-9_]{1,128}")
@@ -30,9 +30,10 @@ internal object HaPolicy {
     fun confirms(state: String?, on: Boolean): Boolean = state == if (on) "on" else "off"
 
     fun text(value: String, maximum: Int = 64): String = value.filterNot {
-        it.isISOControl() || Character.getType(it) in setOf(
-            Character.FORMAT.toInt(), Character.LINE_SEPARATOR.toInt(), Character.PARAGRAPH_SEPARATOR.toInt()
-        )
+        it.isISOControl() || when (Character.getType(it)) {
+            Character.FORMAT.toInt(), Character.LINE_SEPARATOR.toInt(), Character.PARAGRAPH_SEPARATOR.toInt() -> true
+            else -> false
+        }
     }.take(maximum).trim()
 
     fun controls(values: List<HaControlSpec>): List<HaControlSpec> {

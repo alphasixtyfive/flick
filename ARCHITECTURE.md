@@ -9,7 +9,8 @@ with feature tests under `app/src/test/java/app/flick/`.
 | --- | --- |
 | `home/` | Home layout, cards, clock/weather, panel routing and screen state/actions |
 | `profiles/` | Profile editing, avatars, PIN keypad and verification |
-| `settings/` | Grouped settings UI, versioned preferences, persistence and setup import |
+| `settings/` | Grouped settings UI, versioned preferences and persistence |
+| `backup/` | ZIP backup validation, media staging and restore recovery |
 | `apps/` | Installed apps, launch intents and Android Watch Next access |
 | `wallpaper/` | Photo selection, document-folder enumeration and slideshow presentation |
 | `weather/` | Location search and current conditions |
@@ -21,7 +22,7 @@ with feature tests under `app/src/test/java/app/flick/`.
 | `FlickRuntime` | Process-owned stores and integration clients |
 | `LauncherViewModel` | Screen work, profile authority and feature coordination |
 | `LauncherCommands` | Home Assistant command dispatch and management checks |
-| `MainActivity` | Lifecycle, Android permission screens, document pickers and import confirmation |
+| `MainActivity` | Lifecycle, Android permission screens, document pickers and activity results |
 
 Keep models with their feature. Add a module when it provides a useful dependency or build boundary.
 
@@ -36,7 +37,8 @@ verifiers and persisted attempt limits. Unlock input stays in memory and is clea
 
 Settings and wallpaper edits merge changed fields into the latest stored value, preserving unrelated
 changes from an older screen or Home Assistant. A local commit and its StateFlow publication finish
-together. Setup import validates its inputs and saves each feature's configuration separately.
+together. ZIP restore validates settings and stages media before writing. A private journal records the
+previous state of both preference stores so an interrupted restore can be rolled back on startup.
 
 ## UI and input
 
