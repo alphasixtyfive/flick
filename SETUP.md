@@ -4,7 +4,7 @@ Flick supports Android TV and Google TV devices running Android 8.0 or later.
 
 ## Install and choose HOME
 
-1. Download `Flick-<version>.apk` from the [latest release](https://github.com/alphasixtyfive/flick/releases/latest) and install it with Android’s installer or ADB.
+1. Download `Flick-<version>.apk` from the [latest release](https://github.com/alphasixtyfive/flick-tv/releases/latest) and install it with Android’s installer or ADB.
 2. Open Flick from the app list, then choose it in Android's Home/default-app settings.
 3. Check Home, Back, app launch and return with the physical remote.
 
@@ -139,11 +139,11 @@ uses Home Assistant's HLS stream and works without pairing or Android's Display 
 
 ### TV connection
 
-Install the optional [Flick integration](https://github.com/alphasixtyfive/flick-home-assistant)
+Install the optional [Flick TV integration](https://github.com/alphasixtyfive/flick-tv-home-assistant)
 in Home Assistant for notifications and launcher management. Ordinary light controls work without it.
 
 1. On the TV, open Settings → Home Assistant → TV connection → Pair TV.
-2. In an administrator's Home Assistant session, open Settings → Devices & services → Add integration → Flick.
+2. In an administrator's Home Assistant session, open Settings → Devices & services → Add integration → Flick TV.
 3. Enter the TV's six-digit code and confirm its name. The code expires after five minutes.
 
 Pairing uses the existing non-admin TV account and an outbound WebSocket connection.
@@ -177,7 +177,7 @@ its text without moving the controls, clock or apps. Children cannot see the mes
 in Home Assistant, and it stays hidden on the profile chooser and PIN screen.
 The TV page shows one preview and an Edit in Home Assistant QR code. Scan it with your phone,
 choose your TV, then Configure → Home screen text. Edit Message in Home Assistant.
-See the [integration instructions](https://github.com/alphasixtyfive/flick-home-assistant#home-screen-text)
+See the [integration instructions](https://github.com/alphasixtyfive/flick-tv-home-assistant#home-screen-text)
 for template examples and configuration.
 
 ## Themes

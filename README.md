@@ -7,10 +7,9 @@
 <p align="center">An Android TV launcher with family profiles, photo wallpapers and Home Assistant controls.</p>
 
 <p align="center">
-  <a href="https://github.com/alphasixtyfive/flick/releases/latest"><strong>Download APK</strong></a>
-  | <a href="https://github.com/alphasixtyfive/flick/releases">Release notes</a>
+  <a href="https://github.com/alphasixtyfive/flick-tv/releases/latest"><strong>Download APK</strong></a>
+  | <a href="https://github.com/alphasixtyfive/flick-tv/releases">Release notes</a>
   | <a href="SETUP.md">Setup guide</a>
-  | <a href="https://github.com/alphasixtyfive/flick/issues">Issues</a>
 </p>
 
 Flick puts your favourite apps and photos on the TV home screen. Each person can have
@@ -27,7 +26,7 @@ Flick runs on Android TV and Google TV devices with Android 8.0 or later.
 
 ## Get started
 
-1. Download the APK from the [latest release](https://github.com/alphasixtyfive/flick/releases/latest).
+1. Download the APK from the [latest release](https://github.com/alphasixtyfive/flick-tv/releases/latest).
 2. Install it on the TV, open Flick, then choose it in Android's Home/default-app settings.
 3. Add your favourite apps and choose a wallpaper. Add family profiles when you're ready.
 
@@ -72,7 +71,7 @@ workaround, the SmartTube and Jellyfin examples, and the content controls still 
 Choose the lights, switches, scenes and sensors you want on the TV. Ordinary controls
 connect directly to Home Assistant using a dedicated non-admin account.
 
-The optional [Flick integration](https://github.com/alphasixtyfive/flick-home-assistant)
+The optional [Flick TV integration](https://github.com/alphasixtyfive/flick-tv-home-assistant)
 adds TV notifications, profile management and wallpaper controls. Paired TVs can also show
 [Home screen text](SETUP.md#home-screen-text): one optional message configured in Home Assistant.
 Once paired, a simple notification looks like this:

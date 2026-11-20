@@ -1,6 +1,6 @@
 # Flick wallpapers
 
-Nine 3840 × 2160 JPEG wallpapers for a widescreen TV. Download individual images below, or get the wallpaper ZIP from the [Flick releases](https://github.com/alphasixtyfive/flick/releases).
+Nine 3840 × 2160 JPEG wallpapers for a widescreen TV. Download individual images below, or get the wallpaper ZIP from the [Flick TV releases](https://github.com/alphasixtyfive/flick-tv/releases).
 
 | Wallpaper | Download |
 | --- | --- |

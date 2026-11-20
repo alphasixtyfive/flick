@@ -8,6 +8,7 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import app.flick.tv.home.HomeActions
 import app.flick.tv.home.HomeState
+import app.flick.tv.settings.ProjectLinks
 import app.flick.tv.ui.components.TvDialog
 import app.flick.tv.ui.components.TvPanel
 import app.flick.tv.ui.components.TvSettingRow
@@ -32,12 +33,12 @@ internal fun IntegrationPanel(state: HomeState, actions: HomeActions, onBack: ()
             IntegrationPage.Overview -> {
                 if (!bridge.paired) {
                     IntegrationDetail(bridge.connection.label)
-                    IntegrationDetail("Add Flick in Home Assistant to send notifications and manage this TV. Light controls work without it.")
+                    IntegrationDetail("Add Flick TV in Home Assistant to send notifications and manage this TV. Light controls work without it.")
                     if (state.haConfiguration.configured) {
                         val code = bridge.pairingCode
                         if (code != null) {
                             Text(code, style = MaterialTheme.typography.headlineMedium)
-                            IntegrationDetail("In Home Assistant, open Settings → Devices & services → Add integration → Flick. Enter this code within five minutes.")
+                            IntegrationDetail("In Home Assistant, open Settings → Devices & services → Add integration → Flick TV. Enter this code within five minutes.")
                         }
                         TvSettingRow(if (code == null) "Pair TV" else "New pairing code", icon = Icons.Default.Link,
                             onClick = actions.pairHomeAssistant)
@@ -45,7 +46,7 @@ internal fun IntegrationPanel(state: HomeState, actions: HomeActions, onBack: ()
                         IntegrationDetail("Connect Home Assistant first, then return here to pair this TV.")
                     }
                     TvSettingRow("Setup instructions", icon = Icons.AutoMirrored.Filled.HelpOutline,
-                        onClick = { actions.openProjectLink("https://github.com/alphasixtyfive/flick#home-assistant") })
+                        onClick = { actions.openProjectLink(ProjectLinks.SETUP) })
                 } else {
                     TvSettingRow("Enable TV connection", checked = bridge.enabled, icon = Icons.Default.Link,
                         detail = if (bridge.enabled) bridge.connection.label else "Paused. Pairing is saved.",

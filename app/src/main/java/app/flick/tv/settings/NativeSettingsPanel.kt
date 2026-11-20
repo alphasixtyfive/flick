@@ -131,8 +131,6 @@ fun NativeSettingsPanel(
                     onClick = { actions.openProjectLink(ProjectLinks.DEVELOPER) })
                 TvSettingRow("Source code", detail = "GitHub", icon = Icons.Default.Code,
                     onClick = { actions.openProjectLink(ProjectLinks.SOURCE) })
-                TvSettingRow("Report an issue", detail = "GitHub Issues", icon = Icons.Default.BugReport,
-                    onClick = { actions.openProjectLink(ProjectLinks.ISSUES) })
                 TvSettingRow("Third-party licences", icon = Icons.Default.Description,
                     onClick = { actions.openProjectLink(ProjectLinks.LICENCES) })
             }

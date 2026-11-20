@@ -85,7 +85,7 @@ unsubscribes with `unsubscribe_events`. An unsupported subscription's `unknown_c
 only this feature; the main control/notification subscription continues.
 
 Configure Message in Home Assistant. See the
-[integration setup](https://github.com/alphasixtyfive/flick-home-assistant#home-screen-text).
+[integration setup](https://github.com/alphasixtyfive/flick-tv-home-assistant#home-screen-text).
 
 ## Notifications and bounds
 

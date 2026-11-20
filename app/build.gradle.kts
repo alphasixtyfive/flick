@@ -24,8 +24,8 @@ android {
         applicationId = "app.flick"
         minSdk = 26
         targetSdk = 35
-        versionCode = 231
-        versionName = "0.2.31"
+        versionCode = 232
+        versionName = "0.2.32"
     }
     buildFeatures { compose = true; buildConfig = true }
     signingConfigs {
