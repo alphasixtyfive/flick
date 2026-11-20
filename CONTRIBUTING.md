@@ -49,6 +49,12 @@ as Latest. Keep earlier releases, tags and downloads available so users can refe
 notes or download the original build. Keep release notes short and describe the changes users will
 see, including any steps they need to take after updating.
 
+Keep the installed Android application ID and Home component stable during a source rename.
+Flick TV looks up releases by the GitHub repository's numeric ID and accepts APKs from the
+exact old and new release paths. Publish a release with that updater under the existing
+repository name before moving it. Earlier builds reject the API redirect and will need a
+manual APK update after the move.
+
 ## Changes
 
 Keep pull requests focused and describe the behaviour they change. Use the shared TV components;

@@ -2,7 +2,7 @@
   <img src="docs/assets/flick.svg" width="112" height="112" alt="Flick icon">
 </p>
 
-<h1 align="center">Flick</h1>
+<h1 align="center">Flick TV</h1>
 
 <p align="center">An Android TV launcher with family profiles, photo wallpapers and Home Assistant controls.</p>
 

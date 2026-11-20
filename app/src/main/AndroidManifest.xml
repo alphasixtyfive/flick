@@ -27,8 +27,11 @@
             <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="User-enabled Home Assistant connection for TV notifications over other apps." />
         </service>
-        <activity android:name=".MainActivity" android:label="@string/app_name" android:exported="true" android:launchMode="singleTask"
-            android:screenOrientation="landscape" android:excludeFromRecents="true">
+        <activity android:name=".MainActivity" android:exported="false" android:launchMode="singleTask"
+            android:screenOrientation="landscape" android:excludeFromRecents="true" />
+        <!-- Android stores the selected Home component by its fully qualified name. -->
+        <activity-alias android:name="app.flick.MainActivity" android:targetActivity=".MainActivity"
+            android:label="@string/app_name" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.HOME" />
@@ -38,6 +41,6 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
             </intent-filter>
-        </activity>
+        </activity-alias>
     </application>
 </manifest>

@@ -18,7 +18,7 @@ require(!signingConfigured || releaseSigning.all { !it.isNullOrBlank() }) {
 }
 
 android {
-    namespace = "app.flick"
+    namespace = "app.flick.tv"
     compileSdk = 35
     defaultConfig {
         applicationId = "app.flick"

@@ -8,7 +8,7 @@ Flick supports Android TV and Google TV devices running Android 8.0 or later.
 2. Open Flick from the app list, then choose it in Android's Home/default-app settings.
 3. Check Home, Back, app launch and return with the physical remote.
 
-The package is `app.flick`. Updates must use the same signing certificate as the installed app.
+Flick TV's Android application ID is `app.flick`. Updates must use the same signing certificate as the installed app.
 Keep the stock launcher installed and enabled so you can switch back through Android Settings.
 Select the stock launcher before uninstalling Flick. Root and accessibility-service access are not required.
 
