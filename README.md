@@ -30,6 +30,9 @@ Flick runs on Android TV and Google TV devices with Android 8.0 or later.
 2. Install it on the TV, open Flick, then choose it in Android's Home/default-app settings.
 3. Add your favourite apps and choose a wallpaper. Add family profiles when you're ready.
 
+If you already run Flick 0.2.32 or earlier, follow the
+[backup and restore steps](SETUP.md#moving-from-flick-0232-or-earlier) to move to the new Android package.
+
 Keep the stock launcher installed so you can switch back through Android Settings.
 Flick does not require root or an accessibility service. See the [setup guide](SETUP.md)
 for installation, remote controls, photos and permissions.

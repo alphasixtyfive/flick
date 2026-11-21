@@ -162,7 +162,7 @@ internal class UpdateInstaller(private val context: Context) {
         else @Suppress("DEPRECATION") info.versionCode.toLong()
 
     companion object {
-        private const val RESULT_ACTION = "app.flick.UPDATE_RESULT"
+        private const val RESULT_ACTION = "app.flick.tv.UPDATE_RESULT"
         private const val RESULT_TOKEN = "update-token"
     }
 }

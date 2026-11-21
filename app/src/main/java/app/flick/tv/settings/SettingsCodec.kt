@@ -1,6 +1,7 @@
 package app.flick.tv.settings
 
 import app.flick.tv.profiles.Profile
+import app.flick.tv.wallpaper.BuiltInWallpapers
 import app.flick.tv.wallpaper.validWallpaperPhotoUri
 import app.flick.tv.profiles.ProfileStartup
 import app.flick.tv.weather.WeatherLocation
@@ -133,7 +134,7 @@ object SettingsCodec {
     private fun wallpaperUri(value: String): String? {
         val clean = value.trim().takeIf { it.isNotEmpty() } ?: return null
         require(validWallpaperPhotoUri(clean)) { "Choose a built-in wallpaper, document photo or HTTP(S) image" }
-        return clean
+        return BuiltInWallpapers.find(clean)?.uri ?: clean
     }
 
     private fun imageUri(value: String): String? = value.takeIf { it.length <= 4096 &&

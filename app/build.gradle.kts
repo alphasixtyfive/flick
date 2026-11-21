@@ -21,11 +21,11 @@ android {
     namespace = "app.flick.tv"
     compileSdk = 35
     defaultConfig {
-        applicationId = "app.flick"
+        applicationId = "app.flick.tv"
         minSdk = 26
         targetSdk = 35
-        versionCode = 232
-        versionName = "0.2.32"
+        versionCode = 233
+        versionName = "0.2.33"
     }
     buildFeatures { compose = true; buildConfig = true }
     signingConfigs {

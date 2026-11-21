@@ -3,7 +3,7 @@ package app.flick.tv.settings
 object ProjectLinks {
     const val SOURCE = "https://github.com/alphasixtyfive/flick-tv"
     const val REPOSITORY_ID = 1459553132L
-    val releaseRepositories = setOf("alphasixtyfive/flick", "alphasixtyfive/flick-tv")
+    val releaseRepositories = setOf("alphasixtyfive/flick-tv")
     const val LICENCES = "$SOURCE/blob/main/THIRD_PARTY_NOTICES.md"
     const val DEVELOPER = "https://github.com/alphasixtyfive"
     const val SETUP = "$SOURCE#home-assistant"

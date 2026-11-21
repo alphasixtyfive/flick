@@ -38,7 +38,7 @@ fails the build. Signed output is `app-release.apk`.
 Updates must use the installed app's signing identity and a higher version code.
 Before publishing, verify the APK with Android's `apksigner`, check the package and
 version, and compare its certificate fingerprint with the previous release. Publish
-only that verified APK as `Flick-<version>.apk`, with its SHA-256 checksum. GitHub's
+only that verified APK as `Flick-TV-<version>.apk`, with its SHA-256 checksum. GitHub's
 release-asset digest is also checked by Flick's updater. Never publish a CI artifact
 or a development APK as an update.
 
@@ -49,11 +49,9 @@ as Latest. Keep earlier releases, tags and downloads available so users can refe
 notes or download the original build. Keep release notes short and describe the changes users will
 see, including any steps they need to take after updating.
 
-Keep the installed Android application ID and Home component stable during a source rename.
-Flick TV looks up releases by the GitHub repository's numeric ID and accepts APKs from the
-exact old and new release paths. Publish a release with that updater under the existing
-repository name before moving it. Earlier builds reject the API redirect and will need a
-manual APK update after the move.
+Flick TV uses `app.flick.tv` and looks up releases by the GitHub repository's numeric ID.
+Version 0.2.33 introduced that Android application ID. It requires a one-time backup and
+restore when moving from `app.flick`. See [Setup](SETUP.md#moving-from-flick-0232-or-earlier).
 
 ## Changes
 

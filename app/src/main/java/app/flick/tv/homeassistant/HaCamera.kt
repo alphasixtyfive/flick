@@ -14,7 +14,7 @@ import org.json.JSONObject
 internal data class HaCameraSnapshot(val entityId: String, val url: String)
 
 internal object HaCamera {
-    const val ViewAction = "flick_view_camera"
+    const val ViewAction = "flick_tv_view_camera"
     private val streamPath = Regex("/api/hls/[A-Za-z0-9_-]{12,128}/[A-Za-z0-9_-]+\\.m3u8")
 
     fun sameOrigin(first: HttpUrl, second: HttpUrl): Boolean =

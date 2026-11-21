@@ -4,11 +4,19 @@ Flick supports Android TV and Google TV devices running Android 8.0 or later.
 
 ## Install and choose HOME
 
-1. Download `Flick-<version>.apk` from the [latest release](https://github.com/alphasixtyfive/flick-tv/releases/latest) and install it with Android’s installer or ADB.
+1. Download `Flick-TV-<version>.apk` from the [latest release](https://github.com/alphasixtyfive/flick-tv/releases/latest) and install it with Android’s installer or ADB.
 2. Open Flick from the app list, then choose it in Android's Home/default-app settings.
 3. Check Home, Back, app launch and return with the physical remote.
 
-Flick TV's Android application ID is `app.flick`. Updates must use the same signing certificate as the installed app.
+Flick TV's Android application ID is `app.flick.tv`. Updates must use the same signing certificate as the installed app.
+
+### Moving from Flick 0.2.32 or earlier
+
+1. In the existing app, open **Settings → Device → Backup & restore** and save a backup ZIP to Downloads.
+2. Install Flick TV 0.2.33 or later. Both packages can be installed while you move your settings.
+3. Open Flick TV's **Backup & restore**, choose the ZIP, and restore your profiles, themes and photos. Set the adult PIN if prompted.
+4. Re-select any photo folders, reconnect Home Assistant, and pair with the `flick_tv` integration. The backup keeps PINs, sign-in credentials, and Android folder grants out of the archive.
+5. Choose Flick TV as Android’s Home app. Check the restored settings, TV controls, and notifications before removing the older app.
 Keep the stock launcher installed and enabled so you can switch back through Android Settings.
 Select the stock launcher before uninstalling Flick. Root and accessibility-service access are not required.
 

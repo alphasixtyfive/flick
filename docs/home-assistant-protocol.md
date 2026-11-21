@@ -9,7 +9,7 @@ Flick generates a stable device ID, a random 32-byte device secret and a six-dig
 is encrypted in Android Keystore storage and bound to the canonical Home Assistant origin. It is
 never shown in the UI. The code lasts five minutes and is not saved as a launcher preference.
 
-After authenticating as a dedicated non-admin user, the TV subscribes using `flick/connect`:
+After authenticating as a dedicated non-admin user, the TV subscribes using `flick_tv/connect`:
 
 | Field | Format |
 | --- | --- |
@@ -44,10 +44,10 @@ cannot switch itself into an adult profile through a Home Assistant select entit
 belong only in a masked admin options flow, never a domain service or an automation trace.
 Parent PINs contain exactly four digits, including leading zeroes.
 
-The TV replies through `flick/result`, including `device_id`, `device_secret`, `request_id`,
+The TV replies through `flick_tv/result`, including `device_id`, `device_secret`, `request_id`,
 `success`, `data` and an optional short safe error.
 
-Proactive `flick/status` messages use flat fields `version`, `profile`, `profiles`, optional
+Proactive `flick_tv/status` messages use flat fields `version`, `profile`, `profiles`, optional
 `current_app`, and `capabilities`. Profile summaries contain only `id`, `name` and `child`.
 Flick reconnects if a status update is rejected or remains unacknowledged for ten seconds;
 WebSocket ping alone cannot detect a missing logical TV session after an integration reload.
@@ -61,7 +61,7 @@ but notification action buttons require an adult session.
 
 ## Home screen text
 
-Home screen text uses the optional `flick/home_text` subscription
+Home screen text uses the optional `flick_tv/home_text` subscription
 on the existing authenticated socket. It has a separate WebSocket message ID, with
 `device_id`, `device_secret`, `profile_id` and a fresh positive integer `profile_generation`.
 The server acknowledges it with the standard success result and sends exactly these fields:
@@ -93,8 +93,8 @@ Notifications allow a 100-character title, 2048-character message and up to two 
 (`id`, `label`, at most 32 characters). At least one text field must be nonblank. A timeout is
 0–120 seconds; zero uses the default eight seconds unless `persistent` is true. Persistent cards
 wait for Dismiss/Back while the process remains alive. Actions return through
-`flick/notification_action` using the original notice/action IDs. The component validates them
-against the notification it sent before emitting `flick_notification_action`.
+`flick_tv/notification_action` using the original notice/action IDs. The component validates them
+against the notification it sent before emitting `flick_tv_notification_action`.
 The TV acknowledges a queued notification while its photo loads. Replacing or dismissing that
 notification cancels any outstanding photo work for it.
 

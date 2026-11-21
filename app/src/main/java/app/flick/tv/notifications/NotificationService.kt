@@ -118,7 +118,7 @@ class NotificationService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     internal companion object {
-        const val StartBackground = "app.flick.notifications.START"
+        const val StartBackground = "app.flick.tv.notifications.START"
         private const val Channel = "flick_home_assistant"
         private const val NotificationId = 71
     }

@@ -86,7 +86,7 @@ Choose an existing camera. Home Assistant supplies a short-lived image link; the
 does not receive the camera's credentials.
 
 ```yaml
-action: flick.notify
+action: flick_tv.notify
 data:
   device_id: YOUR_FLICK_DEVICE_ID
   id: front-door-preview
@@ -95,7 +95,7 @@ data:
   camera_entity_id: camera.front_door
   timeout: 15
   actions:
-    - id: flick_view_camera
+    - id: flick_tv_view_camera
       label: View camera
 ```
 
@@ -109,7 +109,7 @@ a login prompt. Do not put passwords in URLs.
 ## Keep a reminder until it is dismissed
 
 ```yaml
-action: flick.notify
+action: flick_tv.notify
 data:
   device_id: YOUR_FLICK_DEVICE_ID
   id: tea-ready
@@ -129,7 +129,7 @@ or open URLs. Up to two buttons are supported, and they appear only in an unlock
 session. Child profiles receive the message without action buttons.
 
 ```yaml
-action: flick.notify
+action: flick_tv.notify
 data:
   device_id: YOUR_FLICK_DEVICE_ID
   id: tea-ready
@@ -148,7 +148,7 @@ button is selected:
 alias: Acknowledge the tea reminder from the TV
 triggers:
   - trigger: event
-    event_type: flick_notification_action
+    event_type: flick_tv_notification_action
     event_data:
       notification_id: tea-ready
       action_id: acknowledged
@@ -198,7 +198,7 @@ actions cannot be used as an unattended child-profile switch.
 Advance the slideshow once:
 
 ```yaml
-action: flick.next_wallpaper
+action: flick_tv.next_wallpaper
 data:
   device_id: YOUR_FLICK_DEVICE_ID
 ```
@@ -206,7 +206,7 @@ data:
 Change slideshow preferences:
 
 ```yaml
-action: flick.set_wallpaper_options
+action: flick_tv.set_wallpaper_options
 data:
   device_id: YOUR_FLICK_DEVICE_ID
   interval_seconds: 300
@@ -215,10 +215,10 @@ data:
 ```
 
 A fixed profile wallpaper takes precedence over the shared slideshow. To select a profile,
-use `flick.list_profiles` to find its ID, then call:
+use `flick_tv.list_profiles` to find its ID, then call:
 
 ```yaml
-action: flick.select_profile
+action: flick_tv.select_profile
 data:
   device_id: YOUR_FLICK_DEVICE_ID
   profile_id: kids

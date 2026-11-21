@@ -1,10 +1,11 @@
 package app.flick.tv.wallpaper
 
+import app.flick.tv.BuildConfig
 import app.flick.tv.R
 
 internal data class BuiltInWallpaper(val id: String, val title: String, val drawable: Int) {
     // Resource names remain stable when Android reassigns numeric IDs in an app update.
-    val uri: String get() = "android.resource://app.flick/drawable/flick_${id.replace('-', '_')}"
+    val uri: String get() = "android.resource://${BuildConfig.APPLICATION_ID}/drawable/flick_${id.replace('-', '_')}"
 }
 
 internal object BuiltInWallpapers {
@@ -20,7 +21,14 @@ internal object BuiltInWallpapers {
         BuiltInWallpaper("petal-nocturne", "Petal Nocturne", R.drawable.flick_petal_nocturne),
     )
 
-    fun find(uri: String): BuiltInWallpaper? = items.firstOrNull { it.uri == uri }
+    fun find(uri: String): BuiltInWallpaper? {
+        val resource = if (uri.startsWith(legacyResourcePrefix)) {
+            "android.resource://${BuildConfig.APPLICATION_ID}/" + uri.removePrefix(legacyResourcePrefix)
+        } else uri
+        return items.firstOrNull { it.uri == resource }
+    }
+
+    private const val legacyResourcePrefix = "android.resource://app.flick/"
 
     fun initialSettings() = WallpaperSettings(photos = listOf(WallpaperPhoto(items.first { it.id == "midnight-ribbon" }.uri)))
 }

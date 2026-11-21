@@ -12,8 +12,16 @@ class BuiltInWallpapersTest {
         assertEquals(9, BuiltInWallpapers.items.map { it.id }.distinct().size)
         assertEquals(9, BuiltInWallpapers.items.map { it.uri }.distinct().size)
         assertTrue(BuiltInWallpapers.items.all { it.title.isNotBlank() && it.drawable != 0 })
-        assertEquals("android.resource://app.flick/drawable/flick_petal_nocturne",
+        assertEquals("android.resource://app.flick.tv/drawable/flick_petal_nocturne",
             BuiltInWallpapers.items.first { it.id == "petal-nocturne" }.uri)
+    }
+
+    @Test fun legacyBuiltInWallpaperResolvesToTheNewPackageUri() {
+        val legacy = "android.resource://app.flick/drawable/flick_petal_nocturne"
+        val current = "android.resource://app.flick.tv/drawable/flick_petal_nocturne"
+        assertEquals(current, BuiltInWallpapers.find(legacy)?.uri)
+        val settings = LauncherSettings(profiles = listOf(Profile("home", "Home", wallpaperUri = legacy)))
+        assertEquals(current, SettingsCodec.readStored(SettingsCodec.write(settings)).profiles.single().wallpaperUri)
     }
 
     @Test fun resourceAccessIsLimitedToTheIncludedWallpapers() {

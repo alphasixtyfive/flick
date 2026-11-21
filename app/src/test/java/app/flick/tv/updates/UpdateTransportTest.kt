@@ -100,7 +100,7 @@ class UpdateTransportTest {
                 .body("".toResponseBody()).build()
         }.build().also(clients::add)
         val release = UpdateRelease("0.2.19", "v0.2.19",
-            "https://github.com/example/flick/releases/download/v0.2.19/Flick-0.2.19.apk", "a".repeat(64), 3)
+            "https://github.com/example/flick/releases/download/v0.2.19/Flick-TV-0.2.19.apk", "a".repeat(64), 3)
         val file = java.io.File.createTempFile("flick-transport-", ".apk")
         try {
             UpdateDownload(client).apk(release, file) {}

@@ -256,7 +256,8 @@ class WallpaperRepository(context: Context, scope: CoroutineScope) {
         require(value.dimAmount.isFinite() && value.dimAmount in 0f..0.7f) { "Wallpaper dimming must be between 0 and 70%" }
         val photos = value.photos.map { photo ->
             require(validPhotoUri(photo.uri)) { "Choose a built-in wallpaper, HTTP(S) image or document photo" }
-            WallpaperPhoto(photo.uri.trim())
+            val uri = photo.uri.trim()
+            WallpaperPhoto(BuiltInWallpapers.find(uri)?.uri ?: uri)
         }.distinctBy { it.uri }
         val folder = value.folderUri?.trim()?.takeIf { it.isNotEmpty() }?.also {
             require(it.length <= MAX_URI && Uri.parse(it).scheme == "content" && DocumentsContract.isTreeUri(Uri.parse(it))) {

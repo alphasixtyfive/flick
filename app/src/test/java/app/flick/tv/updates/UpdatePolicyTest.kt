@@ -11,9 +11,9 @@ class UpdatePolicyTest {
 
     private fun release(): JSONObject = JSONObject().put("tag_name", "v0.2.19").put("draft", false)
         .put("prerelease", false).put("body", "Faster wallpaper transitions.")
-        .put("assets", JSONArray().put(JSONObject().put("name", "Flick-0.2.19.apk").put("state", "uploaded")
+        .put("assets", JSONArray().put(JSONObject().put("name", "Flick-TV-0.2.19.apk").put("state", "uploaded")
             .put("size", 4096).put("digest", "sha256:$digest")
-            .put("browser_download_url", "https://github.com/$repository/releases/download/v0.2.19/Flick-0.2.19.apk")))
+            .put("browser_download_url", "https://github.com/$repository/releases/download/v0.2.19/Flick-TV-0.2.19.apk")))
 
     private fun asset(json: JSONObject) = json.getJSONArray("assets").getJSONObject(0)
 
@@ -36,7 +36,7 @@ class UpdatePolicyTest {
         val json = release()
         val allowed = setOf(former, current)
         assertEquals("0.2.19", UpdatePolicy.release(json, allowed).version)
-        asset(json).put("browser_download_url", "https://github.com/$current/releases/download/v0.2.19/Flick-0.2.19.apk")
+        asset(json).put("browser_download_url", "https://github.com/$current/releases/download/v0.2.19/Flick-TV-0.2.19.apk")
         assertEquals("0.2.19", UpdatePolicy.release(json, allowed).version)
         assertTrue(UpdatePolicy.trustedMetadataUrl(UpdatePolicy.metadataUrl(123L)))
         assertFalse(UpdatePolicy.trustedMetadataUrl("https://api.github.com.evil.test/repositories/123/releases/latest"))
@@ -50,7 +50,7 @@ class UpdatePolicyTest {
     }
 
     @Test fun rejectsMissingOrAmbiguousUniversalAssets() {
-        rejected(release().apply { asset(this).put("name", "Flick-0.2.19-arm64.apk") })
+        rejected(release().apply { asset(this).put("name", "Flick-TV-0.2.19-arm64.apk") })
         rejected(release().apply { getJSONArray("assets").put(JSONObject(asset(this).toString())) })
         rejected(release().put("assets", JSONArray()))
         rejected(release().apply { asset(this).put("state", "new") })
@@ -67,11 +67,11 @@ class UpdatePolicyTest {
 
     @Test fun assetMustBelongToThisExactRepositoryTagAndFilename() {
         for (url in listOf(
-            "http://github.com/$repository/releases/download/v0.2.19/Flick-0.2.19.apk",
-            "https://github.com/other/flick/releases/download/v0.2.19/Flick-0.2.19.apk",
-            "https://github.com/$repository/releases/download/v0.2.18/Flick-0.2.19.apk",
-            "https://github.com/$repository/releases/download/v0.2.19/Flick-0.2.19.apk?download=1",
-            "https://github.com.evil.test/$repository/releases/download/v0.2.19/Flick-0.2.19.apk",
+            "http://github.com/$repository/releases/download/v0.2.19/Flick-TV-0.2.19.apk",
+            "https://github.com/other/flick/releases/download/v0.2.19/Flick-TV-0.2.19.apk",
+            "https://github.com/$repository/releases/download/v0.2.18/Flick-TV-0.2.19.apk",
+            "https://github.com/$repository/releases/download/v0.2.19/Flick-TV-0.2.19.apk?download=1",
+            "https://github.com.evil.test/$repository/releases/download/v0.2.19/Flick-TV-0.2.19.apk",
         )) rejected(release().apply { asset(this).put("browser_download_url", url) })
     }
 

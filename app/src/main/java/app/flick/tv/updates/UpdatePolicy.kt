@@ -42,7 +42,7 @@ internal object UpdatePolicy {
         val tag = json.getString("tag_name")
         require(versionParts(tag) != null)
         val version = tag.removePrefix("v")
-        val expectedName = "Flick-$version.apk"
+        val expectedName = "Flick-TV-$version.apk"
         val assets = json.getJSONArray("assets")
         val matches = (0 until assets.length()).mapNotNull { assets.optJSONObject(it) }
             .filter { it.optString("name") == expectedName }
